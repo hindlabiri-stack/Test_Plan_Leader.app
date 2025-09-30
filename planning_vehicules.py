@@ -83,15 +83,20 @@ if st.button("📅 Générer le planning"):
     st.plotly_chart(fig, use_container_width=True)
 
     # Export Excel
-    st.subheader("📥 Exporter le planning")
-    @st.cache_data
-    def convert_df(df):
-        return df.to_excel(index=False, engine="openpyxl")
+   from io import BytesIO
 
-    excel_data = convert_df(df)
-    st.download_button(
-        label="📥 Télécharger le fichier Excel",
-        data=excel_data,
-        file_name="planning_essais_vehicules.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+def convert_df_to_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Planning')
+    processed_data = output.getvalue()
+    return processed_data
+
+excel_data = convert_df_to_excel(df)
+st.download_button(
+    label="📥 Télécharger le fichier Excel",
+    data=excel_data,
+    file_name="planning_essais_vehicules.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
