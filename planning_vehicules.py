@@ -6,33 +6,43 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 # -----------------------------
-# Initialisation DB SQLite avec mise à jour
+# Initialisation DB SQLite avec migration automatique
 # -----------------------------
 def init_db():
     conn = sqlite3.connect("planning.db")
     c = conn.cursor()
-    # Table projets
+
+    # Création des tables si elles n'existent pas
     c.execute('''CREATE TABLE IF NOT EXISTS projets (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nom_projet TEXT)''')
-    # Table véhicules
+
     c.execute('''CREATE TABLE IF NOT EXISTS vehicules (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    projet_id INTEGER,
                     veh_id TEXT,
                     sopm DATE,
-                    lrm DATE,
-                    FOREIGN KEY(projet_id) REFERENCES projets(id))''')
-    # Table essais
+                    lrm DATE)''')
+
     c.execute('''CREATE TABLE IF NOT EXISTS essais (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     vehicule_id INTEGER,
                     nom_test TEXT,
-                    interlocuteur TEXT,
                     date_debut DATE,
-                    duree INTEGER,
-                    FOREIGN KEY(vehicule_id) REFERENCES vehicules(id))''')
+                    duree INTEGER)''')
+
     conn.commit()
+
+    # Migration : ajout des colonnes manquantes
+    try:
+        c.execute("ALTER TABLE vehicules ADD COLUMN projet_id INTEGER;")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        c.execute("ALTER TABLE essais ADD COLUMN interlocuteur TEXT;")
+    except sqlite3.OperationalError:
+        pass
+
     return conn
 
 conn = init_db()
