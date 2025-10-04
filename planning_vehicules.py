@@ -28,54 +28,70 @@ def sauvegarder_projet(nom_projet, data):
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 # Interface de sélection ou création de projet
-st.sidebar.header("📁 Sélection du projet")
+st.sidebar.header("📁 Projet")
 projets_existants = charger_projets()
-nom_projet = st.sidebar.selectbox("Choisir un projet existant", [""] + list(projets_existants.keys()))
-nouveau_projet = st.sidebar.text_input("Ou créer un nouveau projet", "")
+nom_projet_selectionne = st.sidebar.selectbox("Choisir un projet existant", [""] + list(projets_existants.keys()))
+nom_nouveau_projet = st.sidebar.text_input("Ou créer un nouveau projet", "")
 
-if nouveau_projet:
-    nom_projet = nouveau_projet
-    projets_existants[nom_projet] = {"vehicules": [], "essais": {}}
-
-if not nom_projet:
+# Définir la variable nom_projet correctement
+if nom_nouveau_projet:
+    nom_projet = nom_nouveau_projet
+    data_projet = {"vehicules": [], "essais": {}}
+elif nom_projet_selectionne:
+    nom_projet = nom_projet_selectionne
+    data_projet = projets_existants[nom_projet]
+else:
     st.warning("Veuillez sélectionner ou créer un projet.")
     st.stop()
 
-# Chargement des données du projet sélectionné
-data_projet = projets_existants.get(nom_projet, {"vehicules": [], "essais": {}})
-vehicules = data_projet["vehicules"]
-essais_par_vehicule = data_projet["essais"]
+st.subheader(f"📝 Édition du projet : {nom_projet}")
 
 # Interface pour modifier les véhicules
-st.sidebar.header("🚘 Configuration des véhicules")
-nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=len(vehicules) or 1)
+st.markdown("### 🚘 Liste des véhicules")
+vehicules = data_projet.get("vehicules", [])
+essais_par_vehicule = data_projet.get("essais", {})
 
-vehicules = []
-for i in range(nb_vehicules):
-    st.sidebar.subheader(f"Véhicule {i+1}")
-    id_veh = st.sidebar.text_input(f"Contremarque {i+1}", value=f"V{i+1:03}", key=f"id_{i}")
-    vin = st.sidebar.text_input(f"Numéro de VIN {i+1}", value=f"VIN{i+1:05}", key=f"vin_{i}")
-    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", key=f"sopm_{i}")
-    vehicules.append({"id": id_veh, "vin": vin, "sopm": str(sopm)})
+vehicules_modifies = []
+for i, veh in enumerate(vehicules):
+    with st.expander(f"Véhicule {i+1} - {veh['id']}"):
+        col1, col2, col3 = st.columns(3)
+        id_veh = col1.text_input("Contremarque", value=veh["id"], key=f"id_{i}")
+        vin = col2.text_input("Numéro de VIN", value=veh["vin"], key=f"vin_{i}")
+        sopm = col3.date_input("Date SOPM", value=datetime.strptime(veh["sopm"], "%Y-%m-%d").date(), key=f"sopm_{i}")
+        if st.button(f"🗑️ Supprimer ce véhicule", key=f"supprimer_veh_{i}"):
+            continue
+        vehicules_modifies.append({"id": id_veh, "vin": vin, "sopm": str(sopm)})
+
+if st.button("➕ Ajouter un véhicule"):
+    vehicules_modifies.append({"id": f"V{len(vehicules_modifies)+1:03}", "vin": f"VIN{len(vehicules_modifies)+1:05}", "sopm": str(datetime.today().date())})
+
+vehicules = vehicules_modifies
 
 # Interface pour modifier les essais par véhicule
-essais_par_vehicule = {}
-st.sidebar.header("🧪 Définition des essais par véhicule")
+st.markdown("### 🧪 Essais par véhicule")
+essais_par_vehicule_modifies = {}
 for veh in vehicules:
-    essais = []
-    st.sidebar.subheader(f"Essais pour {veh['id']}")
-    nb_essais = st.sidebar.number_input(f"Nombre d'essais pour {veh['id']}", min_value=1, max_value=10, value=2, key=f"nb_essais_{veh['id']}")
-    for j in range(nb_essais):
-        nom_test = st.sidebar.text_input(f"Nom de l'essai {j+1} ({veh['id']})", value=f"Essai {j+1}", key=f"nom_test_{veh['id']}_{j}")
-        interlocuteur = st.sidebar.text_input(f"Interlocuteur {nom_test}", value=f"Interlocuteur {j+1}", key=f"interlocuteur_{veh['id']}_{j}")
-        duree = st.sidebar.number_input(f"Durée (jours) {nom_test}", min_value=1, max_value=30, value=2, key=f"duree_{veh['id']}_{j}")
-        essais.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
-    essais_par_vehicule[veh["id"]] = essais
+    essais = essais_par_vehicule.get(veh["id"], [])
+    essais_mod = []
+    with st.expander(f"Essais pour {veh['id']}"):
+        for j, test in enumerate(essais):
+            col1, col2, col3 = st.columns(3)
+            nom_test = col1.text_input(f"Nom de l'essai {j+1}", value=test["nom"], key=f"nom_{veh['id']}_{j}")
+            interlocuteur = col2.text_input(f"Interlocuteur", value=test["interlocuteur"], key=f"interlocuteur_{veh['id']}_{j}")
+            duree = col3.number_input(f"Durée (jours)", min_value=1, max_value=30, value=test["duree"], key=f"duree_{veh['id']}_{j}")
+            if st.button(f"🗑️ Supprimer l'essai {j+1}", key=f"supprimer_essai_{veh['id']}_{j}"):
+                continue
+            essais_mod.append({"nom": nom_test, "interlocuteur": interlocuteur, "duree": duree})
+        if st.button(f"➕ Ajouter un essai pour {veh['id']}", key=f"ajouter_essai_{veh['id']}"):
+            essais_mod.append({"nom": f"Essai {len(essais_mod)+1}", "interlocuteur": "Interlocuteur", "duree": 2})
+    essais_par_vehicule_modifies[veh["id"]] = essais_mod
+
+essais_par_vehicule = essais_par_vehicule_modifies
 
 # Sauvegarde du projet
-if st.sidebar.button("💾 Sauvegarder le projet"):
+if st.button("💾 Sauvegarder les modifications"):
     sauvegarder_projet(nom_projet, {"vehicules": vehicules, "essais": essais_par_vehicule})
-    st.sidebar.success("Projet sauvegardé avec succès.")
+    st.success("Projet sauvegardé avec succès.")
 
 # Génération du planning
 if st.button("📅 Générer le planning"):
