@@ -234,6 +234,7 @@ else:
                 conn.execute("INSERT INTO vehicules (projet_id, veh_id, sopm, lrm) VALUES (?, ?, ?, ?)",
                              (projet_id, new_veh_id, new_sopm, new_lrm))
                 conn.commit()
+    st.experimental_rerun()
                 st.success("Véhicule ajouté avec succès !")
 
             # Ajout d'un nouvel essai
@@ -249,6 +250,7 @@ else:
                 conn.execute("INSERT INTO essais (vehicule_id, nom_test, interlocuteur, date_debut, duree) VALUES (?, ?, ?, ?, ?)",
                              (veh_db_id, nom_test, interlocuteur, date_debut, duree))
                 conn.commit()
+    st.experimental_rerun()
                 st.success("Essai ajouté avec succès !")
 
             # Supprimer un véhicule
@@ -259,6 +261,7 @@ else:
                 conn.execute("DELETE FROM essais WHERE vehicule_id=?", (veh_db_id,))
                 conn.execute("DELETE FROM vehicules WHERE id=?", (veh_db_id,))
                 conn.commit()
+    st.experimental_rerun()
                 st.warning("Véhicule supprimé avec succès !")
 
             # Supprimer projet complet
@@ -266,6 +269,7 @@ else:
                 conn.execute("DELETE FROM projets WHERE id=?", (projet_id,))
                 conn.execute("DELETE FROM vehicules WHERE projet_id=?", (projet_id,))
                 conn.commit()
+    st.experimental_rerun()
                 st.error("Projet supprimé avec succès !")
         else:
             st.info("Aucun essai pour ce projet.")
