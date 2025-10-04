@@ -31,6 +31,7 @@ def init_db():
                     duree INTEGER)''')
 
     conn.commit()
+    st.experimental_rerun()
 
     # Migration : ajout des colonnes manquantes
     try:
@@ -157,6 +158,7 @@ if mode == "Créer un nouveau projet":
                     })
 
             conn.commit()
+    st.experimental_rerun()
             df = pd.DataFrame(planning)
             st.success(f"✅ Projet '{nom_projet}' sauvegardé avec succès !")
 
@@ -234,12 +236,31 @@ else:
                 conn.execute("INSERT INTO vehicules (projet_id, veh_id, sopm, lrm) VALUES (?, ?, ?, ?)",
                              (projet_id, new_veh_id, new_sopm, new_lrm))
                 conn.commit()
+    st.experimental_rerun()
                 st.success("Véhicule ajouté avec succès !")
 
             # Ajout d'un nouvel essai
             st.subheader("➕ Ajouter un nouvel essai")
-            vehicules_existants = df["ID Véhicule"].unique().tolist()
-            vehicule_cible = st.selectbox("Choisir un véhicule :", vehicules_existants)
+        # Charger tous les véhicules du projet, même ceux sans essais
+        vehicules_existants_query = pd.read_sql_query(
+            "SELECT veh_id, id as veh_db_id FROM vehicules WHERE projet_id=?",
+            conn, params=(projet_id,)
+        )
+        vehicules_existants = vehicules_existants_query["veh_id"].tolist()
+        vehicule_cible = st.selectbox("Choisir un véhicule :", vehicules_existants)
+        nom_test = st.text_input("Nom du test")
+        interlocuteur = st.text_input("Interlocuteur")
+        date_debut = st.date_input("Date début")
+        duree = st.number_input("Durée (jours)", min_value=1, max_value=30, value=2)
+        if st.button("Ajouter essai"):
+            veh_db_id = vehicules_existants_query.loc[
+                vehicules_existants_query["veh_id"] == vehicule_cible, "veh_db_id"
+            ].iloc[0]
+            conn.execute("INSERT INTO essais (vehicule_id, nom_test, interlocuteur, date_debut, duree) VALUES (?, ?, ?, ?, ?)",
+                         (veh_db_id, nom_test, interlocuteur, date_debut, duree))
+            conn.commit()
+            st.success("Essai ajouté avec succès !")
+            st.experimental_rerun()
             nom_test = st.text_input("Nom du test")
             interlocuteur = st.text_input("Interlocuteur")
             date_debut = st.date_input("Date début")
@@ -249,6 +270,7 @@ else:
                 conn.execute("INSERT INTO essais (vehicule_id, nom_test, interlocuteur, date_debut, duree) VALUES (?, ?, ?, ?, ?)",
                              (veh_db_id, nom_test, interlocuteur, date_debut, duree))
                 conn.commit()
+    st.experimental_rerun()
                 st.success("Essai ajouté avec succès !")
 
             # Supprimer un véhicule
@@ -259,6 +281,7 @@ else:
                 conn.execute("DELETE FROM essais WHERE vehicule_id=?", (veh_db_id,))
                 conn.execute("DELETE FROM vehicules WHERE id=?", (veh_db_id,))
                 conn.commit()
+    st.experimental_rerun()
                 st.warning("Véhicule supprimé avec succès !")
 
             # Supprimer projet complet
@@ -266,6 +289,7 @@ else:
                 conn.execute("DELETE FROM projets WHERE id=?", (projet_id,))
                 conn.execute("DELETE FROM vehicules WHERE projet_id=?", (projet_id,))
                 conn.commit()
+    st.experimental_rerun()
                 st.error("Projet supprimé avec succès !")
         else:
             st.info("Aucun essai pour ce projet.")
