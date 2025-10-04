@@ -10,36 +10,48 @@ import os
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
-# Dossier de sauvegarde des projets
-DOSSIER_PROJETS = "projets"
-os.makedirs(DOSSIER_PROJETS, exist_ok=True)
+# 🔐 Authentification utilisateur
+def authentifier_utilisateur():
+    st.sidebar.header("🔐 Connexion")
+    utilisateur = st.sidebar.text_input("Nom d'utilisateur")
+    mot_de_passe = st.sidebar.text_input("Mot de passe", type="password")
+    if utilisateur and mot_de_passe:
+        dossier_utilisateur = os.path.join("projets", utilisateur)
+        os.makedirs(dossier_utilisateur, exist_ok=True)
+        return utilisateur, dossier_utilisateur
+    else:
+        st.warning("Veuillez entrer votre nom d'utilisateur et mot de passe.")
+        st.stop()
 
-# Chargement des projets existants
-liste_projets = [f.split(".")[0] for f in os.listdir(DOSSIER_PROJETS) if f.endswith(".json")]
+utilisateur, dossier_utilisateur = authentifier_utilisateur()
+st.success(f"✅ Connecté en tant que : {utilisateur}")
+
+# 📂 Chargement des projets existants
+liste_projets = [f.split(".")[0] for f in os.listdir(dossier_utilisateur) if f.endswith(".json")]
 projet_selectionne = st.sidebar.selectbox("📂 Sélectionner un projet existant", options=[""] + liste_projets)
 
-# Initialisation des variables
+# Initialisation
 nom_projet = ""
 description_projet = ""
 vehicules = []
 essais = []
 
-# Chargement du projet sélectionné
+# Chargement du projet
 if projet_selectionne:
-    with open(f"{DOSSIER_PROJETS}/{projet_selectionne}.json", "r", encoding="utf-8") as f:
+    with open(f"{dossier_utilisateur}/{projet_selectionne}.json", "r", encoding="utf-8") as f:
         projet_charge = json.load(f)
     nom_projet = projet_charge["nom"]
     description_projet = projet_charge["description"]
     vehicules = projet_charge["vehicules"]
     essais = projet_charge["essais"]
-    st.sidebar.success(f"✅ Projet '{nom_projet}' chargé avec succès.")
+    st.sidebar.success(f"✅ Projet '{nom_projet}' chargé.")
 
-# Modification du nom et de la description
+# 📝 Informations du projet
 st.sidebar.header("📝 Modifier le projet")
-nom_projet = st.sidebar.text_input("Nom du projet", value=nom_projet)
-description_projet = st.sidebar.text_area("Description du projet", value=description_projet)
+nom_projet = st.sidebar.text_input("Nom du projet", value=nom_projet or "Projet Test")
+description_projet = st.sidebar.text_area("Description du projet", value=description_projet or "Description du projet ici...")
 
-# Modification des véhicules
+# 🚙 Données des véhicules
 st.sidebar.header("🚙 Modifier les véhicules")
 nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=len(vehicules) if vehicules else 2)
 vehicules_modifies = []
@@ -50,7 +62,7 @@ for i in range(nb_vehicules):
     lrm = st.sidebar.date_input(f"Date LRM {id_veh}", value=datetime.strptime(vehicules[i]["lrm"], "%Y-%m-%d").date() if i < len(vehicules) else datetime.today().date(), key=f"lrm_{i}")
     vehicules_modifies.append({"id": id_veh, "sopm": str(sopm), "lrm": str(lrm)})
 
-# Modification des essais
+# 🧪 Définition des essais
 st.sidebar.header("🧪 Modifier les essais")
 nb_essais = st.sidebar.number_input("Nombre de types d'essais", min_value=1, max_value=10, value=len(essais) if essais else 3)
 essais_modifies = []
@@ -60,7 +72,7 @@ for j in range(nb_essais):
     duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test}", min_value=1, max_value=30, value=essais[j]["duree"] if j < len(essais) else 2, key=f"duree_{j}")
     essais_modifies.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
 
-# Fonction de sauvegarde
+# 💾 Sauvegarde du projet
 def sauvegarder_projet(nom, description, vehicules, essais):
     projet = {
         "nom": nom,
@@ -68,10 +80,10 @@ def sauvegarder_projet(nom, description, vehicules, essais):
         "vehicules": vehicules,
         "essais": essais
     }
-    with open(f"{DOSSIER_PROJETS}/{nom}.json", "w", encoding="utf-8") as f:
+    with open(f"{dossier_utilisateur}/{nom}.json", "w", encoding="utf-8") as f:
         json.dump(projet, f, ensure_ascii=False, indent=4)
 
-# Génération du planning
+# 📅 Génération du planning
 if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
