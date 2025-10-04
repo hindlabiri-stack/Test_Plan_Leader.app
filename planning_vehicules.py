@@ -3,100 +3,45 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 from io import BytesIO
-import json
-import os
 
 # Configuration de la page
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
-# 🔐 Authentification utilisateur
-def authentifier_utilisateur():
-    st.sidebar.header("🔐 Connexion")
-    utilisateur = st.sidebar.text_input("Nom d'utilisateur")
-    mot_de_passe = st.sidebar.text_input("Mot de passe", type="password")
-    if utilisateur and mot_de_passe:
-        dossier_utilisateur = os.path.join("projets", utilisateur)
-        os.makedirs(dossier_utilisateur, exist_ok=True)
-        return utilisateur, dossier_utilisateur
-    else:
-        st.warning("Veuillez entrer votre nom d'utilisateur et mot de passe.")
-        st.stop()
-
-utilisateur, dossier_utilisateur = authentifier_utilisateur()
-st.success(f"✅ Connecté en tant que : {utilisateur}")
-
-# 📂 Chargement des projets existants
-liste_projets = [f.split(".")[0] for f in os.listdir(dossier_utilisateur) if f.endswith(".json")]
-projet_selectionne = st.sidebar.selectbox("📂 Sélectionner un projet existant", options=[""] + liste_projets)
-
-# Initialisation
-nom_projet = ""
-description_projet = ""
+# 📋 Données des véhicules avec essais spécifiques
+st.sidebar.header("📋 Données des véhicules")
 vehicules = []
-essais = []
+nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=2)
 
-# Chargement du projet
-if projet_selectionne:
-    with open(f"{dossier_utilisateur}/{projet_selectionne}.json", "r", encoding="utf-8") as f:
-        projet_charge = json.load(f)
-    nom_projet = projet_charge["nom"]
-    description_projet = projet_charge["description"]
-    vehicules = projet_charge["vehicules"]
-    essais = projet_charge["essais"]
-    st.sidebar.success(f"✅ Projet '{nom_projet}' chargé.")
-
-# 📝 Informations du projet
-st.sidebar.header("📝 Modifier le projet")
-nom_projet = st.sidebar.text_input("Nom du projet", value=nom_projet or "Projet Test")
-description_projet = st.sidebar.text_area("Description du projet", value=description_projet or "Description du projet ici...")
-
-# 🚙 Données des véhicules
-st.sidebar.header("🚙 Modifier les véhicules")
-nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=len(vehicules) if vehicules else 2)
-vehicules_modifies = []
 for i in range(nb_vehicules):
     st.sidebar.subheader(f"Véhicule {i+1}")
-    id_veh = st.sidebar.text_input(f"ID Véhicule {i+1}", value=vehicules[i]["id"] if i < len(vehicules) else f"V{i+1:03}")
-    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", value=datetime.strptime(vehicules[i]["sopm"], "%Y-%m-%d").date() if i < len(vehicules) else datetime.today().date(), key=f"sopm_{i}")
-    lrm = st.sidebar.date_input(f"Date LRM {id_veh}", value=datetime.strptime(vehicules[i]["lrm"], "%Y-%m-%d").date() if i < len(vehicules) else datetime.today().date(), key=f"lrm_{i}")
-    vehicules_modifies.append({"id": id_veh, "sopm": str(sopm), "lrm": str(lrm)})
+    id_veh = st.sidebar.text_input(f"ID Véhicule {i+1}", value=f"V{i+1:03}")
+    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", key=f"sopm_{i}")
+    lrm = st.sidebar.date_input(f"Date LRM {id_veh}", key=f"lrm_{i}")
 
-# 🧪 Définition des essais
-st.sidebar.header("🧪 Modifier les essais")
-nb_essais = st.sidebar.number_input("Nombre de types d'essais", min_value=1, max_value=10, value=len(essais) if essais else 3)
-essais_modifies = []
-for j in range(nb_essais):
-    nom_test = st.sidebar.text_input(f"Nom du test {j+1}", value=essais[j]["nom"] if j < len(essais) else f"Test {j+1}")
-    interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test}", value=essais[j]["interlocuteur"] if j < len(essais) else f"Interlocuteur {j+1}")
-    duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test}", min_value=1, max_value=30, value=essais[j]["duree"] if j < len(essais) else 2, key=f"duree_{j}")
-    essais_modifies.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
+    st.sidebar.markdown(f"**Essais pour {id_veh}**")
+    nb_essais = st.sidebar.number_input(f"Nombre d'essais pour {id_veh}", min_value=1, max_value=10, value=2, key=f"nb_essais_{i}")
+    essais = []
+    for j in range(nb_essais):
+        nom_test = st.sidebar.text_input(f"Nom du test {j+1} ({id_veh})", value=f"Test {j+1}", key=f"nom_test_{i}_{j}")
+        interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test} ({id_veh})", value=f"Interlocuteur {j+1}", key=f"interlocuteur_{i}_{j}")
+        duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=2, key=f"duree_{i}_{j}")
+        essais.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
 
-# 💾 Sauvegarde du projet
-def sauvegarder_projet(nom, description, vehicules, essais):
-    projet = {
-        "nom": nom,
-        "description": description,
-        "vehicules": vehicules,
-        "essais": essais
-    }
-    with open(f"{dossier_utilisateur}/{nom}.json", "w", encoding="utf-8") as f:
-        json.dump(projet, f, ensure_ascii=False, indent=4)
+    vehicules.append({"id": id_veh, "sopm": sopm, "lrm": lrm, "essais": essais})
 
 # 📅 Génération du planning
 if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
-    for veh in vehicules_modifies:
-        date_courante = datetime.strptime(veh["sopm"], "%Y-%m-%d").date()
-        for test in essais_modifies:
+    for veh in vehicules:
+        date_courante = veh["sopm"]
+        for test in veh["essais"]:
             date_debut = date_courante
             date_fin = date_debut + timedelta(days=test["duree"] - 1)
             semaine = date_debut.isocalendar()[1]
-            sopm_date = datetime.strptime(veh["sopm"], "%Y-%m-%d").date()
-            lrm_date = datetime.strptime(veh["lrm"], "%Y-%m-%d").date()
-            alerte_sopm = "⚠️" if (sopm_date - today).days <= 3 else ""
-            alerte_lrm = "⚠️" if (lrm_date - today).days <= 3 else ""
+            alerte_sopm = "⚠️" if (veh["sopm"] - today).days <= 3 else ""
+            alerte_lrm = "⚠️" if (veh["lrm"] - today).days <= 3 else ""
             alerte_fin_test = "🔔" if (date_fin - today).days <= 2 else ""
             planning.append({
                 "ID Véhicule": veh["id"],
@@ -114,8 +59,6 @@ if st.button("📅 Générer le planning"):
 
     df = pd.DataFrame(planning)
     st.success("✅ Planning généré avec succès !")
-    sauvegarder_projet(nom_projet, description_projet, vehicules_modifies, essais_modifies)
-    st.success(f"💾 Projet '{nom_projet}' sauvegardé avec succès !")
 
     st.subheader("📄 Tableau du planning")
     st.dataframe(df)
