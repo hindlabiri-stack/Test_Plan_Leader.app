@@ -226,56 +226,52 @@ else:
             st.download_button("📥 Télécharger Excel", excel_data, f"planning_{choix_projet}.xlsx")
 
             # Ajout d'un nouveau véhicule
-           st.subheader("➕ Ajouter un nouveau véhicule")
-new_veh_id = st.text_input("ID du nouveau véhicule")
-new_sopm = st.date_input("Date SOPM du véhicule")
-new_lrm = st.date_input("Date LRM du véhicule")
-
-if st.button("Ajouter véhicule"):
-    conn.execute("INSERT INTO vehicules (projet_id, veh_id, sopm, lrm) VALUES (?, ?, ?, ?)",
-                 (projet_id, new_veh_id, new_sopm, new_lrm))
-    conn.commit()
-    st.success("Véhicule ajouté avec succès !")
-    st.experimental_rerun()
+            st.subheader("➕ Ajouter un nouveau véhicule")
+            new_veh_id = st.text_input("ID du nouveau véhicule")
+            new_sopm = st.date_input("Date SOPM du véhicule")
+            new_lrm = st.date_input("Date LRM du véhicule")
+            if st.button("Ajouter véhicule"):
+                conn.execute("INSERT INTO vehicules (projet_id, veh_id, sopm, lrm) VALUES (?, ?, ?, ?)",
+                             (projet_id, new_veh_id, new_sopm, new_lrm))
+                conn.commit()
+                st.experimental_rerun()
+                st.success("Véhicule ajouté avec succès !")
 
             # Ajout d'un nouvel essai
-           st.subheader("➕ Ajouter un nouvel essai")
-vehicules_existants = pd.read_sql_query(
-    "SELECT veh_id, id as veh_db_id FROM vehicules WHERE projet_id=?", conn, params=(projet_id,)
-)
-vehicule_cible = st.selectbox("Choisir un véhicule :", vehicules_existants["veh_id"].tolist())
-nom_test = st.text_input("Nom du test")
-interlocuteur = st.text_input("Interlocuteur")
-date_debut = st.date_input("Date début")
-duree = st.number_input("Durée (jours)", min_value=1, max_value=30, value=2)
-
-if st.button("Ajouter essai"):
-    veh_db_id = vehicules_existants.loc[vehicules_existants["veh_id"] == vehicule_cible, "veh_db_id"].iloc[0]
-    conn.execute("INSERT INTO essais (vehicule_id, nom_test, interlocuteur, date_debut, duree) VALUES (?, ?, ?, ?, ?)",
-                 (veh_db_id, nom_test, interlocuteur, date_debut, duree))
-    conn.commit()
-    st.success("Essai ajouté avec succès !")
-    st.experimental_rerun()
+            st.subheader("➕ Ajouter un nouvel essai")
+            vehicules_existants = df["ID Véhicule"].unique().tolist()
+            vehicule_cible = st.selectbox("Choisir un véhicule :", vehicules_existants)
+            nom_test = st.text_input("Nom du test")
+            interlocuteur = st.text_input("Interlocuteur")
+            date_debut = st.date_input("Date début")
+            duree = st.number_input("Durée (jours)", min_value=1, max_value=30, value=2)
+            if st.button("Ajouter essai"):
+                veh_db_id = df[df["ID Véhicule"] == vehicule_cible]["veh_db_id"].iloc[0]
+                conn.execute("INSERT INTO essais (vehicule_id, nom_test, interlocuteur, date_debut, duree) VALUES (?, ?, ?, ?, ?)",
+                             (veh_db_id, nom_test, interlocuteur, date_debut, duree))
+                conn.commit()
+                st.experimental_rerun()
+                st.success("Essai ajouté avec succès !")
 
             # Supprimer un véhicule
-          st.subheader("🗑 Supprimer un véhicule")
-vehicule_suppr = st.selectbox("Choisir un véhicule à supprimer :", vehicules_existants["veh_id"].tolist())
-
-if st.button("Supprimer véhicule"):
-    veh_db_id = vehicules_existants.loc[vehicules_existants["veh_id"] == vehicule_suppr, "veh_db_id"].iloc[0]
-    conn.execute("DELETE FROM essais WHERE vehicule_id=?", (veh_db_id,))
-    conn.execute("DELETE FROM vehicules WHERE id=?", (veh_db_id,))
-    conn.commit()
-    st.warning("Véhicule supprimé avec succès !")
-    st.experimental_rerun()
+            st.subheader("🗑 Supprimer un véhicule")
+            vehicule_suppr = st.selectbox("Choisir un véhicule à supprimer :", vehicules_existants)
+            if st.button("Supprimer véhicule"):
+                veh_db_id = df[df["ID Véhicule"] == vehicule_suppr]["veh_db_id"].iloc[0]
+                conn.execute("DELETE FROM essais WHERE vehicule_id=?", (veh_db_id,))
+                conn.execute("DELETE FROM vehicules WHERE id=?", (veh_db_id,))
+                conn.commit()
+                st.experimental_rerun()
+                st.warning("Véhicule supprimé avec succès !")
 
             # Supprimer projet complet
-          
-if st.button("🗑 Supprimer le projet complet"):
-    conn.execute("DELETE FROM essais WHERE vehicule_id IN (SELECT id FROM vehicules WHERE projet_id=?)", (projet_id,))
-    conn.execute("DELETE FROM vehicules WHERE projet_id=?", (projet_id,))
-    conn.execute("DELETE FROM projets WHERE id=?", (projet_id,))
-    conn.commit()
-    st.error("Projet supprimé avec succès !")
-    st.experimental_rerun()
-
+            if st.button("🗑 Supprimer le projet complet"):
+                conn.execute("DELETE FROM projets WHERE id=?", (projet_id,))
+                conn.execute("DELETE FROM vehicules WHERE projet_id=?", (projet_id,))
+                conn.commit()
+                st.experimental_rerun()
+                st.error("Projet supprimé avec succès !")
+        else:
+            st.info("Aucun essai pour ce projet.")
+    else:
+        st.warning("Aucun projet trouvé.")
