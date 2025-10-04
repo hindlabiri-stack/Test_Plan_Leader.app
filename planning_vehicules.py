@@ -271,3 +271,30 @@ else:
             st.info("Aucun essai pour ce projet.")
     else:
         st.warning("Aucun projet trouvé.")
+# 🔧 Modifier ou supprimer un essai existant
+    st.subheader("🛠️ Modifier ou supprimer un essai existant")
+    essais_existants = df[["Nom du Test", "essai_id"]].drop_duplicates()
+    essai_selection = st.selectbox("Sélectionner un essai à modifier :", essais_existants["Nom du Test"].tolist())
+
+    essai_id = essais_existants.loc[essais_existants["Nom du Test"] == essai_selection, "essai_id"].values[0]
+    essai_data = df[df["essai_id"] == essai_id].iloc[0]
+
+    nouveau_nom = st.text_input("Nouveau nom du test", value=essai_data["Nom du Test"])
+    nouvel_interlocuteur = st.text_input("Nouvel interlocuteur", value=essai_data["Interlocuteur"])
+    nouvelle_date = st.date_input("Nouvelle date de début", value=essai_data["Date Début"])
+    nouvelle_duree = st.number_input("Nouvelle durée (jours)", min_value=1, max_value=30, value=int(essai_data["Durée (jours)"]))
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ Enregistrer les modifications"):
+            conn.execute(
+                "UPDATE essais SET nom_test=?, interlocuteur=?, date_debut=?, duree=? WHERE id=?",
+                (nouveau_nom, nouvel_interlocuteur, nouvelle_date, nouvelle_duree, essai_id)
+            )
+            conn.commit()
+            st.success("Essai modifié avec succès !")
+    with col2:
+        if st.button("🗑️ Supprimer cet essai"):
+            conn.execute("DELETE FROM essais WHERE id=?", (essai_id,))
+            conn.commit()
+            st.warning("Essai supprimé avec succès !")
