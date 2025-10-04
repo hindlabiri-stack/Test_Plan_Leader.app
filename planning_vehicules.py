@@ -4,7 +4,6 @@ import plotly.express as px
 from datetime import datetime, timedelta
 from io import BytesIO
 
-# Configuration de la page
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
@@ -26,18 +25,28 @@ for i in range(nb_vehicules):
         nom_test = st.sidebar.text_input(f"Nom du test {j+1} ({id_veh})", value=f"Test {j+1}", key=f"nom_test_{i}_{j}")
         interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test} ({id_veh})", value=f"Interlocuteur {j+1}", key=f"interlocuteur_{i}_{j}")
         duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=2, key=f"duree_{i}_{j}")
-        essais.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
+        date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", key=f"date_debut_{i}_{j}")
+        essais.append({
+            "nom": nom_test,
+            "duree": duree,
+            "interlocuteur": interlocuteur,
+            "date_debut": date_debut
+        })
 
-    vehicules.append({"id": id_veh, "sopm": sopm, "lrm": lrm, "essais": essais})
+    vehicules.append({
+        "id": id_veh,
+        "sopm": sopm,
+        "lrm": lrm,
+        "essais": essais
+    })
 
 # 📅 Génération du planning
 if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
     for veh in vehicules:
-        date_courante = veh["sopm"]
         for test in veh["essais"]:
-            date_debut = date_courante
+            date_debut = test["date_debut"]
             date_fin = date_debut + timedelta(days=test["duree"] - 1)
             semaine = date_debut.isocalendar()[1]
             alerte_sopm = "⚠️" if (veh["sopm"] - today).days <= 3 else ""
@@ -55,7 +64,6 @@ if st.button("📅 Générer le planning"):
                 "Date LRM": f"{veh['lrm']} {alerte_lrm}",
                 "Alerte Fin Test": alerte_fin_test
             })
-            date_courante = date_fin + timedelta(days=1)
 
     df = pd.DataFrame(planning)
     st.success("✅ Planning généré avec succès !")
