@@ -158,7 +158,27 @@ if mode == "Créer un nouveau projet":
                 for c in chevauchements:
                     st.write(c)
 
+            # Tableau
+            st.subheader("📄 Tableau du planning")
             st.dataframe(df)
+
+            # Gantt
+            st.subheader("📊 Visualisation Gantt")
+            fig = px.timeline(
+                df,
+                x_start="Date Début",
+                x_end="Date Fin",
+                y="ID Véhicule",
+                color="Nom du Test",
+                text="Nom du Test",
+                hover_data=["Interlocuteur", "Durée (jours)", "Date SOPM", "Date LRM"]
+            )
+            fig.update_yaxes(autorange="reversed")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Export Excel
+            excel_data = convert_df_to_excel(df)
+            st.download_button("📥 Télécharger Excel", excel_data, f"planning_{nom_projet}.xlsx")
 
 # -----------------------------
 # Mode Gestion / Modification
@@ -176,6 +196,7 @@ else:
             st.dataframe(df)
 
             # Gantt
+            st.subheader("📊 Visualisation Gantt")
             fig = px.timeline(
                 df,
                 x_start="Date Début",
