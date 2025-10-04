@@ -56,13 +56,20 @@ def convert_df_to_excel(df):
         df.to_excel(writer, index=False, sheet_name='Planning')
     return output.getvalue()
 
-def get_all_planning(projet_id=None):
-    query = """SELECT p.nom_projet, v.veh_id, e.nom_test, e.interlocuteur, e.date_debut, e.duree, v.sopm, v.lrm, e.id as essai_id
+def get_all_planning(projet_id=None, start_date=None, end_date=None):
+    query = """SELECT p.nom_projet, v.id as veh_db_id, v.veh_id, v.sopm, v.lrm,
+                      e.id as essai_id, e.nom_test, e.interlocuteur, e.date_debut, e.duree
                FROM essais e 
                JOIN vehicules v ON e.vehicule_id = v.id
                JOIN projets p ON v.projet_id = p.id"""
+    conditions = []
     if projet_id:
-        query += f" WHERE p.id={projet_id}"
+        conditions.append(f"p.id={projet_id}")
+    if start_date and end_date:
+        conditions.append(f"date(e.date_debut) BETWEEN date('{start_date}') AND date('{end_date}')")
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
     df = pd.read_sql_query(query, conn)
     if not df.empty:
         df["Date Début"] = pd.to_datetime(df["date_debut"])
@@ -190,7 +197,12 @@ else:
         choix_projet = st.selectbox("Choisir un projet :", projets["nom_projet"].tolist())
         projet_id = projets.loc[projets["nom_projet"] == choix_projet, "id"].values[0]
 
-        df = get_all_planning(projet_id)
+        # Filtre par période
+        st.write("📅 Filtrer par période")
+        start_date = st.date_input("Date début", value=datetime.today() - timedelta(days=30))
+        end_date = st.date_input("Date fin", value=datetime.today() + timedelta(days=30))
+
+        df = get_all_planning(projet_id, start_date, end_date)
         if not df.empty:
             st.write(f"Planning du projet **{choix_projet}**")
             st.dataframe(df)
@@ -213,22 +225,33 @@ else:
             excel_data = convert_df_to_excel(df)
             st.download_button("📥 Télécharger Excel", excel_data, f"planning_{choix_projet}.xlsx")
 
-            # Modification / Suppression
-            st.subheader("✏️ Modifier ou Supprimer un essai")
-            essai_id = st.selectbox("Choisir un essai :", df["Nom du Test"].tolist())
-            essai_row = df[df["Nom du Test"] == essai_id].iloc[0]
+            # Modification complète
+            st.subheader("✏️ Modifier les véhicules et essais")
+            for veh_id in df["ID Véhicule"].unique():
+                st.markdown(f"### Véhicule : {veh_id}")
+                veh_essais = df[df["ID Véhicule"] == veh_id]
+                for _, essai in veh_essais.iterrows():
+                    with st.expander(f"Modifier essai : {essai['Nom du Test']}"):
+                        new_nom = st.text_input("Nom du test", essai["Nom du Test"], key=f"nom_{essai['essai_id']}")
+                        new_interloc = st.text_input("Interlocuteur", essai["Interlocuteur"], key=f"interloc_{essai['essai_id']}")
+                        new_date = st.date_input("Date début", essai["Date Début"], key=f"date_{essai['essai_id']}")
+                        new_duree = st.number_input("Durée (jours)", value=int(essai["Durée (jours)"]), key=f"duree_{essai['essai_id']}")
+                        if st.button("✅ Mettre à jour", key=f"update_{essai['essai_id']}"):
+                            conn.execute("UPDATE essais SET nom_test=?, interlocuteur=?, date_debut=?, duree=? WHERE id=?",
+                                         (new_nom, new_interloc, new_date, new_duree, essai["essai_id"]))
+                            conn.commit()
+                            st.success("Essai mis à jour avec succès !")
+                        if st.button("🗑 Supprimer", key=f"delete_{essai['essai_id']}"):
+                            conn.execute("DELETE FROM essais WHERE id=?", (essai["essai_id"],))
+                            conn.commit()
+                            st.warning("Essai supprimé avec succès !")
 
-            new_date = st.date_input("Nouvelle date début", essai_row["Date Début"])
-            new_duree = st.number_input("Nouvelle durée (jours)", value=int(essai_row["Durée (jours)"]))
-            if st.button("✅ Mettre à jour"):
-                conn.execute("UPDATE essais SET date_debut=?, duree=? WHERE id=?",
-                             (new_date, new_duree, essai_row["essai_id"]))
+            # Supprimer projet complet
+            if st.button("🗑 Supprimer le projet complet"):
+                conn.execute("DELETE FROM projets WHERE id=?", (projet_id,))
+                conn.execute("DELETE FROM vehicules WHERE projet_id=?", (projet_id,))
                 conn.commit()
-                st.success("Essai mis à jour avec succès !")
-            if st.button("🗑 Supprimer cet essai"):
-                conn.execute("DELETE FROM essais WHERE id=?", (essai_row["essai_id"],))
-                conn.commit()
-                st.warning("Essai supprimé avec succès !")
+                st.error("Projet supprimé avec succès !")
         else:
             st.info("Aucun essai pour ce projet.")
     else:
