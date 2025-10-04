@@ -1,3 +1,4 @@
+# 📦 Imports
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -6,20 +7,22 @@ from io import BytesIO
 import json
 import os
 
+# ⚙️ Configuration
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
-# 📁 Gestion du projet
-st.sidebar.header("📁 Gestion du projet")
+# 📁 Gestion des projets
+st.sidebar.header("📁 Gestion des projets")
+dossier_projets = "projets"
+os.makedirs(dossier_projets, exist_ok=True)
+
+# Création ou modification
 nom_projet = st.sidebar.text_input("Nom du projet", value="Projet Test")
 description_projet = st.sidebar.text_area("Description du projet", value="Description du projet ici...")
 
-# 📂 Chargement d’un projet existant
-st.sidebar.subheader("📂 Charger un projet existant")
-dossier_projets = "projets"
-os.makedirs(dossier_projets, exist_ok=True)
+# Chargement
 liste_projets = [f.split(".")[0] for f in os.listdir(dossier_projets) if f.endswith(".json")]
-projet_selectionne = st.sidebar.selectbox("Sélectionner un projet", options=[""] + liste_projets)
+projet_selectionne = st.sidebar.selectbox("📂 Charger un projet", options=[""] + liste_projets)
 
 vehicules = []
 essais = []
@@ -33,8 +36,14 @@ if projet_selectionne:
     essais = projet_charge["essais"]
     st.sidebar.success(f"📂 Projet '{nom_projet}' chargé")
 
-# 📋 Données des véhicules
-st.sidebar.header("📋 Données des véhicules")
+    # Suppression
+    if st.sidebar.button("🗑️ Supprimer ce projet"):
+        os.remove(f"{dossier_projets}/{projet_selectionne}.json")
+        st.sidebar.warning(f"Projet '{projet_selectionne}' supprimé.")
+        st.experimental_rerun()
+
+# 🚙 Données des véhicules
+st.sidebar.header("🚙 Données des véhicules")
 if not vehicules:
     nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=2)
     for i in range(nb_vehicules):
@@ -54,7 +63,7 @@ if not essais:
         duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test}", min_value=1, max_value=30, value=2, key=f"duree_{j}")
         essais.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
 
-# 💾 Fonction de sauvegarde du projet
+# 💾 Sauvegarde
 def sauvegarder_projet(nom, description, vehicules, essais):
     projet = {
         "nom": nom,
@@ -129,3 +138,39 @@ if st.button("📅 Générer le planning"):
         file_name="planning_essais_vehicules.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+# 🔍 Comparaison de projets
+st.sidebar.subheader("🔍 Comparer plusieurs projets")
+projets_comparaison = st.sidebar.multiselect("Sélectionner les projets à comparer", options=liste_projets)
+
+if projets_comparaison:
+    st.subheader("📊 Comparaison des plannings de projets")
+    for nom in projets_comparaison:
+        with open(f"{dossier_projets}/{nom}.json", "r", encoding="utf-8") as f:
+            projet = json.load(f)
+        planning = []
+        for veh in projet["vehicules"]:
+            date_courante = datetime.strptime(veh["sopm"], "%Y-%m-%d").date()
+            for test in projet["essais"]:
+                date_debut = date_courante
+                date_fin = date_debut + timedelta(days=test["duree"] - 1)
+                planning.append({
+                    "Projet": nom,
+                    "ID Véhicule": veh["id"],
+                    "Nom du Test": test["nom"],
+                    "Date Début": date_debut,
+                    "Date Fin": date_fin
+                })
+                date_courante = date_fin + timedelta(days=1)
+        df_comp = pd.DataFrame(planning)
+        fig_comp = px.timeline(
+            df_comp,
+            x_start="Date Début",
+            x_end="Date Fin",
+            y="ID Véhicule",
+            color="Nom du Test",
+            title=f"Planning du projet '{nom}'",
+            hover_data=["Projet", "Nom du Test"]
+        )
+        fig_comp.update_yaxes(autorange="reversed")
+        st.plotly_chart(fig_comp, use_container_width=True)
