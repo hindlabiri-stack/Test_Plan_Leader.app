@@ -6,11 +6,12 @@ from datetime import datetime, timedelta
 from io import BytesIO
 
 # -----------------------------
-# Initialisation DB SQLite
+# Initialisation DB SQLite avec mise à jour
 # -----------------------------
 def init_db():
     conn = sqlite3.connect("planning.db")
     c = conn.cursor()
+    # Création des tables si elles n'existent pas
     c.execute('''CREATE TABLE IF NOT EXISTS vehicules (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     veh_id TEXT,
@@ -20,11 +21,16 @@ def init_db():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     vehicule_id INTEGER,
                     nom_test TEXT,
-                    interlocuteur TEXT,
                     date_debut DATE,
                     duree INTEGER,
                     FOREIGN KEY(vehicule_id) REFERENCES vehicules(id))''')
     conn.commit()
+
+    # Ajout de la colonne interlocuteur si elle n'existe pas
+    try:
+        c.execute("ALTER TABLE essais ADD COLUMN interlocuteur TEXT;")
+    except sqlite3.OperationalError:
+        pass  # Colonne déjà existante
     return conn
 
 conn = init_db()
@@ -127,3 +133,29 @@ if mode == "Créer un nouveau planning":
         fig.update_traces(textposition='inside', insidetextanchor='start')
         fig.update_yaxes(autorange="reversed")
         fig.update_layout(title="Planning des essais par véhicule", xaxis_title="Date", yaxis_title="Véhicule")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Export Excel
+        def convert_df_to_excel(df):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Planning')
+            return output.getvalue()
+
+        excel_data = convert_df_to_excel(df)
+        st.download_button("📥 Télécharger Excel", excel_data, "planning.xlsx")
+
+else:
+    st.subheader("📂 Charger un planning existant")
+    c = conn.cursor()
+    c.execute("SELECT id, veh_id FROM vehicules")
+    veh_list = c.fetchall()
+    if veh_list:
+        choix = st.selectbox("Choisir un véhicule :", [f"{v[0]} - {v[1]}" for v in veh_list])
+        veh_id = int(choix.split(" - ")[0])
+        c.execute("SELECT nom_test, interlocuteur, date_debut, duree FROM essais WHERE vehicule_id=?", (veh_id,))
+        essais = c.fetchall()
+        df = pd.DataFrame(essais, columns=["Nom du Test", "Interlocuteur", "Date Début", "Durée (jours)"])
+        st.dataframe(df)
+    else:
+        st.warning("Aucun planning trouvé dans la base.")
