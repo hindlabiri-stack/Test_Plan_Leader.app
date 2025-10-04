@@ -7,7 +7,18 @@ from io import BytesIO
 # Configuration de la page
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
+st.sidebar.subheader("📂 Charger un projet existant")
+liste_projets = [f.split(".")[0] for f in os.listdir("projets") if f.endswith(".json")]
+projet_selectionne = st.sidebar.selectbox("Sélectionner un projet", options=[""] + liste_projets)
 
+if projet_selectionne:
+    with open(f"projets/{projet_selectionne}.json", "r", encoding="utf-8") as f:
+        projet_charge = json.load(f)
+    nom_projet = projet_charge["nom"]
+    description_projet = projet_charge["description"]
+    vehicules = projet_charge["vehicules"]
+    essais = projet_charge["essais"]
+    st.sidebar.success(f"📂 Projet '{nom_projet}' chargé")
 # 📋 Saisie des données des véhicules
 st.sidebar.header("📋 Données des véhicules")
 vehicules = []
