@@ -102,13 +102,13 @@ if chevauchements:
     st.write(pd.DataFrame(chevauchements))
 
 # 📅 Génération du planning
-    if st.button("📅 Générer le planning"):
+if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
     for veh in vehicules:
         for test in veh["essais"]:
-            # Vérifie que les champs essentiels sont définis
-            if test["nom"] and test["interlocuteur"] and test["date_debut"] and test["duree"] > 0:
+            # Affiche uniquement les essais bien définis
+            if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
                 date_debut = pd.to_datetime(test["date_debut"]).date()
                 date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
                 semaine = date_debut.isocalendar()[1]
@@ -129,36 +129,40 @@ if chevauchements:
                     "Date LRM": f"{lrm} {alerte_lrm}",
                     "Alerte Fin Test": alerte_fin_test
                 })
-    df = pd.DataFrame(planning)
-    st.success("✅ Planning généré avec succès !")
 
-    st.subheader("📄 Tableau du planning")
-    st.dataframe(df)
+    if planning:
+        df = pd.DataFrame(planning)
+        st.success("✅ Planning généré avec succès !")
 
-    st.subheader("📊 Visualisation Gantt")
-    fig = px.timeline(
-        df,
-        x_start="Date Début",
-        x_end="Date Fin",
-        y="ID Véhicule",
-        color="Nom du Test",
-        hover_data=["Nom du Test", "Interlocuteur", "Durée (jours)", "Semaine", "Date SOPM", "Date LRM"]
-    )
-    fig.update_yaxes(autorange="reversed")
-    fig.update_layout(title="Planning des essais par véhicule", xaxis_title="Date", yaxis_title="Véhicule")
-    st.plotly_chart(fig, use_container_width=True)
+        st.subheader("📄 Tableau du planning")
+        st.dataframe(df)
 
-    st.subheader("📥 Exporter le tableau Excel")
-    def convert_df_to_excel(df):
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Planning')
-        return output.getvalue()
+        st.subheader("📊 Visualisation Gantt")
+        fig = px.timeline(
+            df,
+            x_start="Date Début",
+            x_end="Date Fin",
+            y="ID Véhicule",
+            color="Nom du Test",
+            hover_data=["Nom du Test", "Interlocuteur", "Durée (jours)", "Semaine", "Date SOPM", "Date LRM"]
+        )
+        fig.update_yaxes(autorange="reversed")
+        fig.update_layout(title="Planning des essais par véhicule", xaxis_title="Date", yaxis_title="Véhicule")
+        st.plotly_chart(fig, use_container_width=True)
 
-    excel_data = convert_df_to_excel(df)
-    st.download_button(
-        label="📥 Télécharger le fichier Excel",
-        data=excel_data,
-        file_name=f"{nom_projet}_planning.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        st.subheader("📥 Exporter le tableau Excel")
+        def convert_df_to_excel(df):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Planning')
+            return output.getvalue()
+
+        excel_data = convert_df_to_excel(df)
+        st.download_button(
+            label="📥 Télécharger le fichier Excel",
+            data=excel_data,
+            file_name=f"{nom_projet}_planning.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.warning("⚠️ Aucun essai défini correctement pour générer le planning.")
