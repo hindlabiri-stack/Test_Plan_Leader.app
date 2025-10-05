@@ -124,3 +124,107 @@ for i in range(nb_vehicules):
         "lrm": str(lrm),
         "essais": essais
     })
+
+# 🔐 Vérification avant sauvegarde
+projet_existe = nom_projet in projets_existants
+if projet_existe:
+    st.sidebar.warning(f"⚠️ Le projet '{nom_projet}' existe déjà.")
+    confirmer_ecrasement = st.sidebar.checkbox("✅ Écraser le projet existant")
+
+# 💾 Sauvegarde du projet
+if st.sidebar.button("💾 Sauvegarder le projet"):
+    if not projet_existe or confirmer_ecrasement:
+        with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
+            json.dump({"vehicules": vehicules_input}, f, indent=2)
+        sauvegarder_dernier_projet(nom_projet)
+        st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
+    else:
+        st.sidebar.error("❌ Le projet existe déjà. Cochez la case pour confirmer l’écrasement.")
+
+# ⚠️ Détection des chevauchements
+chevauchements = []
+for veh in vehicules_input:
+    essais = veh["essais"]
+    for i in range(len(essais)):
+        debut_i = pd.to_datetime(essais[i]["date_debut"]).date()
+        fin_i = debut_i + timedelta(days=int(essais[i]["duree"]) - 1)
+        for j in range(i + 1, len(essais)):
+            debut_j = pd.to_datetime(essais[j]["date_debut"]).date()
+            fin_j = debut_j + timedelta(days=int(essais[j]["duree"]) - 1)
+            if debut_i <= fin_j and debut_j <= fin_i:
+                chevauchements.append({
+                    "ID Véhicule": veh["id"],
+                    "Test 1": essais[i]["nom"],
+                    "Test 2": essais[j]["nom"],
+                    "Dates Test 1": f"{debut_i} → {fin_i}",
+                    "Dates Test 2": f"{debut_j} → {fin_j}"
+                })
+
+if chevauchements:
+    st.warning("⚠️ Des chevauchements ont été détectés entre les essais !")
+    st.write(pd.DataFrame(chevauchements))
+
+# 📅 Génération du planning
+if st.button("📅 Générer le planning"):
+    planning = []
+    today = datetime.today().date()
+    for veh in vehicules_input:
+        for test in veh["essais"]:
+            if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
+                date_debut = pd.to_datetime(test["date_debut"]).date()
+                date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
+                semaine = date_debut.isocalendar()[1]
+                sopm = pd.to_datetime(veh["sopm"]).date()
+                lrm = pd.to_datetime(veh["lrm"]).date()
+                alerte_sopm = "⚠️" if (sopm - today).days <= 3 else ""
+                alerte_lrm = "⚠️" if (lrm - today).days <= 3 else ""
+                alerte_fin_test = "🔔" if (date_fin - today).days <= 2 else ""
+                planning.append({
+                    "ID Véhicule": veh["id"],
+                    "Nom du Test": test["nom"],
+                    "Interlocuteur": test["interlocuteur"],
+                    "Date Début": date_debut,
+                    "Date Fin": date_fin,
+                    "Durée (jours)": test["duree"],
+                    "Semaine": semaine,
+                    "Date SOPM": f"{sopm} {alerte_sopm}",
+                    "Date LRM": f"{lrm} {alerte_lrm}",
+                    "Alerte Fin Test": alerte_fin_test
+                })
+
+    if planning:
+        df = pd.DataFrame(planning)
+        st.success("✅ Planning généré avec succès !")
+
+        st.subheader("📄 Tableau du planning")
+        st.dataframe(df)
+
+        st.subheader("📊 Visualisation Gantt")
+        fig = px.timeline(
+            df,
+            x_start="Date Début",
+            x_end="Date Fin",
+            y="ID Véhicule",
+            color="Nom du Test",
+            hover_data=["Nom du Test", "Interlocuteur", "Durée (jours)", "Semaine", "Date SOPM", "Date LRM"]
+        )
+        fig.update_yaxes(autorange="reversed")
+        fig.update_layout(title="Planning des essais par véhicule", xaxis_title="Date", yaxis_title="Véhicule")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("📥 Exporter le tableau Excel")
+        def convert_df_to_excel(df):
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Planning')
+            return output.getvalue()
+
+        excel_data = convert_df_to_excel(df)
+        st.download_button(
+            label="📥 Télécharger le fichier Excel",
+            data=excel_data,
+            file_name=f"{nom_projet}_planning.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.warning("⚠️ Aucun essai défini correctement pour générer le planning.")
