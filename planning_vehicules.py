@@ -7,7 +7,6 @@ from io import BytesIO
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
-# 📋 Données des véhicules avec essais spécifiques
 st.sidebar.header("📋 Données des véhicules")
 vehicules = []
 nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=2)
@@ -17,36 +16,25 @@ for i in range(nb_vehicules):
     id_veh = st.sidebar.text_input(f"ID Véhicule {i+1}", value=f"V{i+1:03}")
     sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", key=f"sopm_{i}")
     lrm = st.sidebar.date_input(f"Date LRM {id_veh}", key=f"lrm_{i}")
+    vehicules.append({"id": id_veh, "sopm": sopm, "lrm": lrm})
 
-    st.sidebar.markdown(f"**Essais pour {id_veh}**")
-    nb_essais = st.sidebar.number_input(f"Nombre d'essais pour {id_veh}", min_value=1, max_value=10, value=2, key=f"nb_essais_{i}")
-    essais = []
-    for j in range(nb_essais):
-        nom_test = st.sidebar.text_input(f"Nom du test {j+1} ({id_veh})", value=f"Test {j+1}", key=f"nom_test_{i}_{j}")
-        interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test} ({id_veh})", value=f"Interlocuteur {j+1}", key=f"interlocuteur_{i}_{j}")
-        duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=2, key=f"duree_{i}_{j}")
-        date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", key=f"date_debut_{i}_{j}")
-        essais.append({
-            "nom": nom_test,
-            "duree": duree,
-            "interlocuteur": interlocuteur,
-            "date_debut": date_debut
-        })
+st.sidebar.header("🧪 Définition des essais")
+essais = []
+nb_essais = st.sidebar.number_input("Nombre de types d'essais", min_value=1, max_value=10, value=3)
 
-    vehicules.append({
-        "id": id_veh,
-        "sopm": sopm,
-        "lrm": lrm,
-        "essais": essais
-    })
+for j in range(nb_essais):
+    nom_test = st.sidebar.text_input(f"Nom du test {j+1}", value=f"Test {j+1}")
+    interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test}", value=f"Interlocuteur {j+1}")
+    duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test}", min_value=1, max_value=30, value=2, key=f"duree_{j}")
+    essais.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur})
 
-# 📅 Génération du planning
 if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
     for veh in vehicules:
-        for test in veh["essais"]:
-            date_debut = test["date_debut"]
+        date_courante = veh["sopm"]
+        for test in essais:
+            date_debut = date_courante
             date_fin = date_debut + timedelta(days=test["duree"] - 1)
             semaine = date_debut.isocalendar()[1]
             alerte_sopm = "⚠️" if (veh["sopm"] - today).days <= 3 else ""
@@ -64,8 +52,10 @@ if st.button("📅 Générer le planning"):
                 "Date LRM": f"{veh['lrm']} {alerte_lrm}",
                 "Alerte Fin Test": alerte_fin_test
             })
+            date_courante = date_fin + timedelta(days=1)
 
     df = pd.DataFrame(planning)
+
     st.success("✅ Planning généré avec succès !")
 
     st.subheader("📄 Tableau du planning")
@@ -85,6 +75,7 @@ if st.button("📅 Générer le planning"):
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("📥 Exporter le tableau Excel")
+
     def convert_df_to_excel(df):
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
