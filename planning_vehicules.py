@@ -29,6 +29,10 @@ if not st.session_state.authenticated:
             st.error("Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
 
+# 📁 Créer dossier utilisateur
+dossier_utilisateur = f"data/{st.session_state.utilisateur}"
+os.makedirs(dossier_utilisateur, exist_ok=True)
+
 # 🏁 Interface principale
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title(f"🚗 Planification des essais des véhicules - Utilisateur : {st.session_state.utilisateur}")
@@ -36,15 +40,15 @@ st.title(f"🚗 Planification des essais des véhicules - Utilisateur : {st.sess
 # 📁 Gestion des projets
 st.sidebar.header("📁 Gestion des projets")
 nom_projet = st.sidebar.text_input("Nom du projet", value="Projet_1")
-nom_fichier = f"{st.session_state.utilisateur}_{nom_projet}_planning.csv"
+nom_fichier = f"{dossier_utilisateur}/{nom_projet}_planning.csv"
 
 # 📂 Chargement d’un projet existant
 st.sidebar.subheader("📂 Charger un projet existant")
-projets_disponibles = [f for f in os.listdir() if f.startswith(st.session_state.utilisateur) and f.endswith(".csv")]
+projets_disponibles = [f for f in os.listdir(dossier_utilisateur) if f.endswith(".csv")]
 if projets_disponibles:
     projet_selectionne = st.sidebar.selectbox("Choisir un projet", projets_disponibles)
     if st.sidebar.button("📥 Charger le projet"):
-        df = pd.read_csv(projet_selectionne)
+        df = pd.read_csv(f"{dossier_utilisateur}/{projet_selectionne}")
         st.success(f"Projet '{projet_selectionne}' chargé !")
         st.dataframe(df)
         st.stop()
