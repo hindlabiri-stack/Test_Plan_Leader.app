@@ -102,32 +102,33 @@ if chevauchements:
     st.write(pd.DataFrame(chevauchements))
 
 # 📅 Génération du planning
-if st.button("📅 Générer le planning"):
+    if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
     for veh in vehicules:
         for test in veh["essais"]:
-            date_debut = pd.to_datetime(test["date_debut"]).date()
-            date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
-            semaine = date_debut.isocalendar()[1]
-            sopm = pd.to_datetime(veh["sopm"]).date()
-            lrm = pd.to_datetime(veh["lrm"]).date()
-            alerte_sopm = "⚠️" if (sopm - today).days <= 3 else ""
-            alerte_lrm = "⚠️" if (lrm - today).days <= 3 else ""
-            alerte_fin_test = "🔔" if (date_fin - today).days <= 2 else ""
-            planning.append({
-                "ID Véhicule": veh["id"],
-                "Nom du Test": test["nom"],
-                "Interlocuteur": test["interlocuteur"],
-                "Date Début": date_debut,
-                "Date Fin": date_fin,
-                "Durée (jours)": test["duree"],
-                "Semaine": semaine,
-                "Date SOPM": f"{sopm} {alerte_sopm}",
-                "Date LRM": f"{lrm} {alerte_lrm}",
-                "Alerte Fin Test": alerte_fin_test
-            })
-
+            # Vérifie que les champs essentiels sont définis
+            if test["nom"] and test["interlocuteur"] and test["date_debut"] and test["duree"] > 0:
+                date_debut = pd.to_datetime(test["date_debut"]).date()
+                date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
+                semaine = date_debut.isocalendar()[1]
+                sopm = pd.to_datetime(veh["sopm"]).date()
+                lrm = pd.to_datetime(veh["lrm"]).date()
+                alerte_sopm = "⚠️" if (sopm - today).days <= 3 else ""
+                alerte_lrm = "⚠️" if (lrm - today).days <= 3 else ""
+                alerte_fin_test = "🔔" if (date_fin - today).days <= 2 else ""
+                planning.append({
+                    "ID Véhicule": veh["id"],
+                    "Nom du Test": test["nom"],
+                    "Interlocuteur": test["interlocuteur"],
+                    "Date Début": date_debut,
+                    "Date Fin": date_fin,
+                    "Durée (jours)": test["duree"],
+                    "Semaine": semaine,
+                    "Date SOPM": f"{sopm} {alerte_sopm}",
+                    "Date LRM": f"{lrm} {alerte_lrm}",
+                    "Alerte Fin Test": alerte_fin_test
+                })
     df = pd.DataFrame(planning)
     st.success("✅ Planning généré avec succès !")
 
