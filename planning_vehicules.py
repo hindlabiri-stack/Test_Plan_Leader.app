@@ -3,37 +3,53 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 from io import BytesIO
+import os
 
-# 🔐 Authentification simple
+# 🔐 Base simple d'utilisateurs
+utilisateurs = {
+    "hind": "motdepasse1",
+    "amine": "motdepasse2",
+    "sara": "motdepasse3"
+}
+
+# 🔐 Authentification
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+    st.session_state.utilisateur = ""
 
 if not st.session_state.authenticated:
     st.title("🔐 Connexion")
     username = st.text_input("Nom d'utilisateur")
     password = st.text_input("Mot de passe", type="password")
     if st.button("Se connecter"):
-        if username == "admin" and password == "motdepasse":  # à personnaliser
+        if username in utilisateurs and utilisateurs[username] == password:
             st.session_state.authenticated = True
+            st.session_state.utilisateur = username
         else:
             st.error("Nom d'utilisateur ou mot de passe incorrect")
     st.stop()
 
 # 🏁 Interface principale
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
-st.title("🚗 Planification des essais des véhicules")
+st.title(f"🚗 Planification des essais des véhicules - Utilisateur : {st.session_state.utilisateur}")
 
 # 📁 Gestion des projets
 st.sidebar.header("📁 Gestion des projets")
 nom_projet = st.sidebar.text_input("Nom du projet", value="Projet_1")
+nom_fichier = f"{st.session_state.utilisateur}_{nom_projet}_planning.csv"
 
 # 📂 Chargement d’un projet existant
-uploaded_file = st.sidebar.file_uploader("📂 Charger un projet existant (.csv)", type=["csv"])
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    st.success(f"Projet '{nom_projet}' chargé avec succès !")
-    st.dataframe(df)
-    st.stop()
+st.sidebar.subheader("📂 Charger un projet existant")
+projets_disponibles = [f for f in os.listdir() if f.startswith(st.session_state.utilisateur) and f.endswith(".csv")]
+if projets_disponibles:
+    projet_selectionne = st.sidebar.selectbox("Choisir un projet", projets_disponibles)
+    if st.sidebar.button("📥 Charger le projet"):
+        df = pd.read_csv(projet_selectionne)
+        st.success(f"Projet '{projet_selectionne}' chargé !")
+        st.dataframe(df)
+        st.stop()
+else:
+    st.sidebar.info("Aucun projet disponible pour cet utilisateur.")
 
 # 📊 Données des véhicules
 st.sidebar.header("📊 Données des véhicules")
@@ -128,5 +144,6 @@ if st.button("📅 Générer le planning"):
     )
 
     # 💾 Sauvegarde CSV
-    st.sidebar.button("💾 Sauvegarder le projet")
-    df.to_csv(f"{nom_projet}_planning.csv", index=False)
+    if st.sidebar.button("💾 Sauvegarder le projet"):
+        df.to_csv(nom_fichier, index=False)
+        st.sidebar.success(f"Projet sauvegardé sous : {nom_fichier}")
