@@ -103,7 +103,7 @@ for i in range(nb_vehicules):
             f"Interlocuteur du test {nom_test} ({id_veh})", value=essai_data["interlocuteur"], key=f"interlocuteur_{essai_key_prefix}"
         )
         duree = st.sidebar.number_input(
-            f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30,
+            f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=300,
             value=int(essai_data["duree"]), key=f"duree_{essai_key_prefix}"
         )
         date_debut = st.sidebar.date_input(
