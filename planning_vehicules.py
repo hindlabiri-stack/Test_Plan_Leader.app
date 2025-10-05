@@ -50,7 +50,7 @@ for j in range(nb_essais):
     nom_test = st.sidebar.text_input(f"Nom du test {j+1}", value=f"Test {j+1}")
     interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test}", value=f"Interlocuteur {j+1}")
     duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test}", min_value=1, max_value=30, value=2, key=f"duree_{j}")
-    date_debut_test = st.sidebar.date_input(f"Date début du test {nom_test}", key=f"date_debut_{j}"
+    date_debut_test = st.sidebar.date_input(f"Date début du test {nom_test}", key=f"date_debut_{j}")
     essais.append({"nom": nom_test, "duree": duree, "interlocuteur": interlocuteur,  "date_debut": date_debut_test})
     
 
