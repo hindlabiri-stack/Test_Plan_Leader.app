@@ -3,29 +3,57 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 from io import BytesIO
+import json
+import os
 
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
-# 📋 Données des véhicules avec essais spécifiques
-st.sidebar.header("📋 Données des véhicules")
+# 📁 Dossier de sauvegarde des projets
+DOSSIER_PROJETS = "projets_vehicules"
+os.makedirs(DOSSIER_PROJETS, exist_ok=True)
+
+# 📂 Chargement des projets existants
+projets_existants = [f.replace(".json", "") for f in os.listdir(DOSSIER_PROJETS) if f.endswith(".json")]
+projet_selectionne = st.sidebar.selectbox("📂 Charger un projet existant", [""] + projets_existants)
+
+# 📌 Nom du projet actuel
+nom_projet = st.sidebar.text_input("📝 Nom du projet", value=projet_selectionne if projet_selectionne else "Projet_Test")
+
 vehicules = []
-nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=2)
+
+# 🔄 Chargement du projet sélectionné
+if projet_selectionne:
+    with open(os.path.join(DOSSIER_PROJETS, f"{projet_selectionne}.json"), "r") as f:
+        data = json.load(f)
+        vehicules = data["vehicules"]
+
+# 🧮 Nombre de véhicules
+nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=len(vehicules) if vehicules else 2)
 
 for i in range(nb_vehicules):
     st.sidebar.subheader(f"Véhicule {i+1}")
-    id_veh = st.sidebar.text_input(f"ID Véhicule {i+1}", value=f"V{i+1:03}")
-    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", key=f"sopm_{i}")
-    lrm = st.sidebar.date_input(f"Date LRM {id_veh}", key=f"lrm_{i}")
+    if i < len(vehicules):
+        veh_data = vehicules[i]
+    else:
+        veh_data = {"id": f"V{i+1:03}", "sopm": datetime.today().date(), "lrm": datetime.today().date(), "essais": []}
 
-    st.sidebar.markdown(f"**Essais pour {id_veh}**")
-    nb_essais = st.sidebar.number_input(f"Nombre d'essais pour {id_veh}", min_value=1, max_value=10, value=2, key=f"nb_essais_{i}")
+    id_veh = st.sidebar.text_input(f"ID Véhicule {i+1}", value=veh_data["id"], key=f"id_veh_{i}")
+    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", value=veh_data["sopm"], key=f"sopm_{i}")
+    lrm = st.sidebar.date_input(f"Date LRM {id_veh}", value=veh_data["lrm"], key=f"lrm_{i}")
+
+    nb_essais = st.sidebar.number_input(f"Nombre d'essais pour {id_veh}", min_value=1, max_value=10, value=len(veh_data["essais"]) if veh_data["essais"] else 2, key=f"nb_essais_{i}")
     essais = []
     for j in range(nb_essais):
-        nom_test = st.sidebar.text_input(f"Nom du test {j+1} ({id_veh})", value=f"Test {j+1}", key=f"nom_test_{i}_{j}")
-        interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test} ({id_veh})", value=f"Interlocuteur {j+1}", key=f"interlocuteur_{i}_{j}")
-        duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=2, key=f"duree_{i}_{j}")
-        date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", key=f"date_debut_{i}_{j}")
+        if j < len(veh_data["essais"]):
+            essai_data = veh_data["essais"][j]
+        else:
+            essai_data = {"nom": f"Test {j+1}", "interlocuteur": f"Interlocuteur {j+1}", "duree": 2, "date_debut": datetime.today().date()}
+
+        nom_test = st.sidebar.text_input(f"Nom du test {j+1} ({id_veh})", value=essai_data["nom"], key=f"nom_test_{i}_{j}")
+        interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test} ({id_veh})", value=essai_data["interlocuteur"], key=f"interlocuteur_{i}_{j}")
+        duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=essai_data["duree"], key=f"duree_{i}_{j}")
+        date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", value=essai_data["date_debut"], key=f"date_debut_{i}_{j}")
         essais.append({
             "nom": nom_test,
             "duree": duree,
@@ -40,7 +68,13 @@ for i in range(nb_vehicules):
         "essais": essais
     })
 
-# ⚠️ Vérification des chevauchements
+# 💾 Sauvegarde du projet
+if st.sidebar.button("💾 Sauvegarder le projet"):
+    with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
+        json.dump({"vehicules": vehicules}, f, default=str)
+    st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
+
+# ⚠️ Détection des chevauchements
 chevauchements = []
 for veh in vehicules:
     essais = veh["essais"]
@@ -118,6 +152,6 @@ if st.button("📅 Générer le planning"):
     st.download_button(
         label="📥 Télécharger le fichier Excel",
         data=excel_data,
-        file_name="planning_essais_vehicules.xlsx",
+        file_name=f"{nom_projet}_planning.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
