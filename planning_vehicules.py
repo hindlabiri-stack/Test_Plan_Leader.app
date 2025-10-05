@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from io import BytesIO
 import json
 import os
@@ -36,11 +36,11 @@ for i in range(nb_vehicules):
     if i < len(vehicules):
         veh_data = vehicules[i]
     else:
-        veh_data = {"id": f"V{i+1:03}", "sopm": datetime.today().date(), "lrm": datetime.today().date(), "essais": []}
+        veh_data = {"id": f"V{i+1:03}", "sopm": str(datetime.today().date()), "lrm": str(datetime.today().date()), "essais": []}
 
     id_veh = st.sidebar.text_input(f"ID Véhicule {i+1}", value=veh_data["id"], key=f"id_veh_{i}")
-    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", value=veh_data["sopm"], key=f"sopm_{i}")
-    lrm = st.sidebar.date_input(f"Date LRM {id_veh}", value=veh_data["lrm"], key=f"lrm_{i}")
+    sopm = st.sidebar.date_input(f"Date SOPM {id_veh}", value=pd.to_datetime(veh_data["sopm"]).date(), key=f"sopm_{i}")
+    lrm = st.sidebar.date_input(f"Date LRM {id_veh}", value=pd.to_datetime(veh_data["lrm"]).date(), key=f"lrm_{i}")
 
     nb_essais = st.sidebar.number_input(f"Nombre d'essais pour {id_veh}", min_value=1, max_value=10, value=len(veh_data["essais"]) if veh_data["essais"] else 2, key=f"nb_essais_{i}")
     essais = []
@@ -48,30 +48,30 @@ for i in range(nb_vehicules):
         if j < len(veh_data["essais"]):
             essai_data = veh_data["essais"][j]
         else:
-            essai_data = {"nom": f"Test {j+1}", "interlocuteur": f"Interlocuteur {j+1}", "duree": 2, "date_debut": datetime.today().date()}
+            essai_data = {"nom": f"Test {j+1}", "interlocuteur": f"Interlocuteur {j+1}", "duree": 2, "date_debut": str(datetime.today().date())}
 
         nom_test = st.sidebar.text_input(f"Nom du test {j+1} ({id_veh})", value=essai_data["nom"], key=f"nom_test_{i}_{j}")
         interlocuteur = st.sidebar.text_input(f"Interlocuteur du test {nom_test} ({id_veh})", value=essai_data["interlocuteur"], key=f"interlocuteur_{i}_{j}")
-        duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=essai_data["duree"], key=f"duree_{i}_{j}")
-        date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", value=essai_data["date_debut"], key=f"date_debut_{i}_{j}")
+        duree = st.sidebar.number_input(f"Durée (jours) du test {nom_test} ({id_veh})", min_value=1, max_value=30, value=int(essai_data["duree"]), key=f"duree_{i}_{j}")
+        date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", value=pd.to_datetime(essai_data["date_debut"]).date(), key=f"date_debut_{i}_{j}")
         essais.append({
             "nom": nom_test,
             "duree": duree,
             "interlocuteur": interlocuteur,
-            "date_debut": date_debut
+            "date_debut": str(date_debut)
         })
 
     vehicules.append({
         "id": id_veh,
-        "sopm": sopm,
-        "lrm": lrm,
+        "sopm": str(sopm),
+        "lrm": str(lrm),
         "essais": essais
     })
 
 # 💾 Sauvegarde du projet
 if st.sidebar.button("💾 Sauvegarder le projet"):
     with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
-        json.dump({"vehicules": vehicules}, f, default=str)
+        json.dump({"vehicules": vehicules}, f, indent=2)
     st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
 
 # ⚠️ Détection des chevauchements
@@ -79,11 +79,15 @@ chevauchements = []
 for veh in vehicules:
     essais = veh["essais"]
     for i in range(len(essais)):
-        debut_i = essais[i]["date_debut"]
-        fin_i = debut_i + timedelta(days=essais[i]["duree"] - 1)
+        debut_i = pd.to_datetime(essais[i]["date_debut"]).date()
+        duree_i = int(essais[i]["duree"])
+        fin_i = debut_i + timedelta(days=duree_i - 1)
+
         for j in range(i + 1, len(essais)):
-            debut_j = essais[j]["date_debut"]
-            fin_j = debut_j + timedelta(days=essais[j]["duree"] - 1)
+            debut_j = pd.to_datetime(essais[j]["date_debut"]).date()
+            duree_j = int(essais[j]["duree"])
+            fin_j = debut_j + timedelta(days=duree_j - 1)
+
             if debut_i <= fin_j and debut_j <= fin_i:
                 chevauchements.append({
                     "ID Véhicule": veh["id"],
@@ -103,11 +107,13 @@ if st.button("📅 Générer le planning"):
     today = datetime.today().date()
     for veh in vehicules:
         for test in veh["essais"]:
-            date_debut = test["date_debut"]
-            date_fin = date_debut + timedelta(days=test["duree"] - 1)
+            date_debut = pd.to_datetime(test["date_debut"]).date()
+            date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
             semaine = date_debut.isocalendar()[1]
-            alerte_sopm = "⚠️" if (veh["sopm"] - today).days <= 3 else ""
-            alerte_lrm = "⚠️" if (veh["lrm"] - today).days <= 3 else ""
+            sopm = pd.to_datetime(veh["sopm"]).date()
+            lrm = pd.to_datetime(veh["lrm"]).date()
+            alerte_sopm = "⚠️" if (sopm - today).days <= 3 else ""
+            alerte_lrm = "⚠️" if (lrm - today).days <= 3 else ""
             alerte_fin_test = "🔔" if (date_fin - today).days <= 2 else ""
             planning.append({
                 "ID Véhicule": veh["id"],
@@ -117,8 +123,8 @@ if st.button("📅 Générer le planning"):
                 "Date Fin": date_fin,
                 "Durée (jours)": test["duree"],
                 "Semaine": semaine,
-                "Date SOPM": f"{veh['sopm']} {alerte_sopm}",
-                "Date LRM": f"{veh['lrm']} {alerte_lrm}",
+                "Date SOPM": f"{sopm} {alerte_sopm}",
+                "Date LRM": f"{lrm} {alerte_lrm}",
                 "Alerte Fin Test": alerte_fin_test
             })
 
