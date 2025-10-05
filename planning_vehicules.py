@@ -86,12 +86,21 @@ for i in range(nb_vehicules):
         "essais": essais
     })
 
+# 🔐 Vérification avant sauvegarde
+projet_existe = nom_projet in projets_existants
+if projet_existe:
+    st.sidebar.warning(f"⚠️ Le projet '{nom_projet}' existe déjà.")
+    confirmer_ecrasement = st.sidebar.checkbox("✅ Écraser le projet existant")
+
 # 💾 Sauvegarde du projet
 if st.sidebar.button("💾 Sauvegarder le projet"):
-    with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
-        json.dump({"vehicules": vehicules_input}, f, indent=2)
-    sauvegarder_dernier_projet(nom_projet)
-    st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
+    if not projet_existe or confirmer_ecrasement:
+        with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
+            json.dump({"vehicules": vehicules_input}, f, indent=2)
+        sauvegarder_dernier_projet(nom_projet)
+        st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
+    else:
+        st.sidebar.error("❌ Le projet existe déjà. Cochez la case pour confirmer l’écrasement.")
 
 # ⚠️ Détection des chevauchements
 chevauchements = []
