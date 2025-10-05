@@ -7,8 +7,8 @@ import json
 import os
 import copy
 
-st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
-st.title("🚗 Planification des essais des véhicules")
+st.set_page_config(page_title="Vehicle Test Planning for Integrated Technical Test Plan Leaders (ITPL) & Vehicle Performance Manager (VPM)", layout="wide")
+st.title("🧑‍🔧🛠️🚗 Vehicle Test Planning for Integrated Technical Test Plan Leaders (ITPL) & Vehicle Performance Manager (VPM)")
 
 # 📁 Dossiers et fichiers
 DOSSIER_PROJETS = "projets_vehicules"
