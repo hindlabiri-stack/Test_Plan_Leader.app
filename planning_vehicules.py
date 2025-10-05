@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from io import BytesIO
 import json
 import os
@@ -20,9 +20,8 @@ projet_selectionne = st.sidebar.selectbox("📂 Charger un projet existant", [""
 # 📌 Nom du projet actuel
 nom_projet = st.sidebar.text_input("📝 Nom du projet", value=projet_selectionne if projet_selectionne else "Projet_Test")
 
-vehicules = []
-
 # 🔄 Chargement du projet sélectionné
+vehicules = []
 if projet_selectionne:
     with open(os.path.join(DOSSIER_PROJETS, f"{projet_selectionne}.json"), "r") as f:
         data = json.load(f)
@@ -31,6 +30,8 @@ if projet_selectionne:
 # 🧮 Nombre de véhicules
 nb_vehicules = st.sidebar.number_input("Nombre de véhicules", min_value=1, max_value=20, value=len(vehicules) if vehicules else 2)
 
+# 🧱 Construction des données véhicules
+vehicules_input = []
 for i in range(nb_vehicules):
     st.sidebar.subheader(f"Véhicule {i+1}")
     if i < len(vehicules):
@@ -56,12 +57,12 @@ for i in range(nb_vehicules):
         date_debut = st.sidebar.date_input(f"Date de début du test {nom_test} ({id_veh})", value=pd.to_datetime(essai_data["date_debut"]).date(), key=f"date_debut_{i}_{j}")
         essais.append({
             "nom": nom_test,
-            "duree": duree,
             "interlocuteur": interlocuteur,
+            "duree": duree,
             "date_debut": str(date_debut)
         })
 
-    vehicules.append({
+    vehicules_input.append({
         "id": id_veh,
         "sopm": str(sopm),
         "lrm": str(lrm),
@@ -71,23 +72,19 @@ for i in range(nb_vehicules):
 # 💾 Sauvegarde du projet
 if st.sidebar.button("💾 Sauvegarder le projet"):
     with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
-        json.dump({"vehicules": vehicules}, f, indent=2)
+        json.dump({"vehicules": vehicules_input}, f, indent=2)
     st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
 
 # ⚠️ Détection des chevauchements
 chevauchements = []
-for veh in vehicules:
+for veh in vehicules_input:
     essais = veh["essais"]
     for i in range(len(essais)):
         debut_i = pd.to_datetime(essais[i]["date_debut"]).date()
-        duree_i = int(essais[i]["duree"])
-        fin_i = debut_i + timedelta(days=duree_i - 1)
-
+        fin_i = debut_i + timedelta(days=int(essais[i]["duree"]) - 1)
         for j in range(i + 1, len(essais)):
             debut_j = pd.to_datetime(essais[j]["date_debut"]).date()
-            duree_j = int(essais[j]["duree"])
-            fin_j = debut_j + timedelta(days=duree_j - 1)
-
+            fin_j = debut_j + timedelta(days=int(essais[j]["duree"]) - 1)
             if debut_i <= fin_j and debut_j <= fin_i:
                 chevauchements.append({
                     "ID Véhicule": veh["id"],
@@ -105,9 +102,8 @@ if chevauchements:
 if st.button("📅 Générer le planning"):
     planning = []
     today = datetime.today().date()
-    for veh in vehicules:
+    for veh in vehicules_input:
         for test in veh["essais"]:
-            # Affiche uniquement les essais bien définis
             if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
                 date_debut = pd.to_datetime(test["date_debut"]).date()
                 date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
