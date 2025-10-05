@@ -43,11 +43,11 @@ nom_projet = st.sidebar.text_input("Nom du projet", value="Projet_1")
 nom_fichier = f"{dossier_utilisateur}/{nom_projet}_planning.csv"
 
 # 📂 Chargement d’un projet existant
-st.sidebar.subheader("📂 Charger un projet existant")
+st.sidebar.subheader("📂 Historique des projets")
 projets_disponibles = [f for f in os.listdir(dossier_utilisateur) if f.endswith(".csv")]
 if projets_disponibles:
-    projet_selectionne = st.sidebar.selectbox("Choisir un projet", projets_disponibles)
-    if st.sidebar.button("📥 Charger le projet"):
+    projet_selectionne = st.sidebar.selectbox("📌 Sélectionner un projet", projets_disponibles)
+    if st.sidebar.button("📥 Charger le projet sélectionné"):
         df = pd.read_csv(f"{dossier_utilisateur}/{projet_selectionne}")
         st.success(f"Projet '{projet_selectionne}' chargé !")
         st.dataframe(df)
