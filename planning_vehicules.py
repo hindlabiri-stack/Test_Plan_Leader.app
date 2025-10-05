@@ -9,13 +9,30 @@ import os
 st.set_page_config(page_title="Planification des essais véhicules", layout="wide")
 st.title("🚗 Planification des essais des véhicules")
 
-# 📁 Dossier de sauvegarde des projets
+# 📁 Dossiers et fichiers
 DOSSIER_PROJETS = "projets_vehicules"
+FICHIER_DERNIER_PROJET = "dernier_projet.json"
 os.makedirs(DOSSIER_PROJETS, exist_ok=True)
+
+# 🔧 Fonctions de persistance
+def sauvegarder_dernier_projet(nom):
+    with open(FICHIER_DERNIER_PROJET, "w") as f:
+        json.dump({"nom": nom}, f)
+
+def charger_dernier_projet():
+    if os.path.exists(FICHIER_DERNIER_PROJET):
+        with open(FICHIER_DERNIER_PROJET, "r") as f:
+            return json.load(f).get("nom", "")
+    return ""
 
 # 📂 Chargement des projets existants
 projets_existants = [f.replace(".json", "") for f in os.listdir(DOSSIER_PROJETS) if f.endswith(".json")]
-projet_selectionne = st.sidebar.selectbox("📂 Charger un projet existant", [""] + projets_existants)
+dernier_projet = charger_dernier_projet()
+projet_selectionne = st.sidebar.selectbox(
+    "📂 Charger un projet existant",
+    [""] + projets_existants,
+    index=([""] + projets_existants).index(dernier_projet) if dernier_projet in projets_existants else 0
+)
 
 # 📌 Nom du projet actuel
 nom_projet = st.sidebar.text_input("📝 Nom du projet", value=projet_selectionne if projet_selectionne else "Projet_Test")
@@ -73,6 +90,7 @@ for i in range(nb_vehicules):
 if st.sidebar.button("💾 Sauvegarder le projet"):
     with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w") as f:
         json.dump({"vehicules": vehicules_input}, f, indent=2)
+    sauvegarder_dernier_projet(nom_projet)
     st.sidebar.success(f"Projet '{nom_projet}' sauvegardé avec succès ✅")
 
 # ⚠️ Détection des chevauchements
