@@ -7,7 +7,7 @@ import json
 import os
 import copy
 
-st.set_page_config(page_title="Automotive Vehicle & Valisation Test Planning Tool for ITPL & VPM", layout="wide")
+st.set_page_config(page_title="Automotive Vehicle & Validation Test Planning Tool for ITPL & VPM", layout="wide")
 st.title("🧑‍🔧🛠️🚗 Automotive Vehicle Test & Validation Planning Tool for ITPL & VPM ")
 
 # 📁 Dossiers et fichiers
