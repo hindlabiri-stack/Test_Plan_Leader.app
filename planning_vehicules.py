@@ -40,6 +40,29 @@ for i in range(nb_vehicules):
         "essais": essais
     })
 
+# ⚠️ Vérification des chevauchements
+chevauchements = []
+for veh in vehicules:
+    essais = veh["essais"]
+    for i in range(len(essais)):
+        debut_i = essais[i]["date_debut"]
+        fin_i = debut_i + timedelta(days=essais[i]["duree"] - 1)
+        for j in range(i + 1, len(essais)):
+            debut_j = essais[j]["date_debut"]
+            fin_j = debut_j + timedelta(days=essais[j]["duree"] - 1)
+            if debut_i <= fin_j and debut_j <= fin_i:
+                chevauchements.append({
+                    "ID Véhicule": veh["id"],
+                    "Test 1": essais[i]["nom"],
+                    "Test 2": essais[j]["nom"],
+                    "Dates Test 1": f"{debut_i} → {fin_i}",
+                    "Dates Test 2": f"{debut_j} → {fin_j}"
+                })
+
+if chevauchements:
+    st.warning("⚠️ Des chevauchements ont été détectés entre les essais !")
+    st.write(pd.DataFrame(chevauchements))
+
 # 📅 Génération du planning
 if st.button("📅 Générer le planning"):
     planning = []
