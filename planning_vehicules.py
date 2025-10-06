@@ -7,8 +7,8 @@ import json
 import os
 import copy
 
-st.set_page_config(page_title="TestDrive Planner : Management et Planification des Essais véhicules pour ITPL & VPM", layout="wide")
-st.title("🧑‍🔧👩‍🔧🛠️🚗 TestDrive Planner : Management et Planification des Essais véhicules pour ITPL & VPM")
+st.set_page_config(page_title="TestDrive Planner App  Management et Planification des Essais véhicules pour ITPL & VPM", layout="wide")
+st.title("🧑‍🔧👩‍🔧🛠️🚗 TestDrive Planner App Management et Planification des Essais véhicules pour ITPL & VPM")
 
 # 📁 Dossiers et fichiers
 DOSSIER_PROJETS = "projets_vehicules"
