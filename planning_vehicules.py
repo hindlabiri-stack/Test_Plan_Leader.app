@@ -2,14 +2,16 @@ import re
 from datetime import datetime, timedelta
 
 def extraire_noms(prompt):
+    # Extrait les noms propres (commençant par une majuscule)
     return list(set(re.findall(r'\b[A-Z][a-z]+\b', prompt)))
 
 def extraire_types_essais(prompt):
+    # Extrait les types d’essais après "essai" ou "test"
     essais = re.findall(r'(essai|test)\s+([a-zA-Z0-9\-]+)', prompt, re.IGNORECASE)
     return [e[1] for e in essais] if essais else ["Freinage", "Thermique"]
 
 def extraire_dates(prompt):
-    # Recherche des dates au format "dd/mm/yyyy" ou "dd month" ou "le 20 octobre"
+    # Extrait les dates au format "dd/mm/yyyy" ou "le 20 octobre"
     date_patterns = [
         r'\b(\d{1,2}/\d{1,2}/\d{4})\b',
         r'\b(le\s+)?(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\b'
