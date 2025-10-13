@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -24,26 +25,21 @@ def charger_dernier_projet():
             return json.load(f).get("nom", "")
     return ""
 
-# 🧠 Zone GenAI
 st.sidebar.subheader("🧠 Générer un planning avec GenAI")
-prompt_global = st.sidebar.text_area("Décris ton besoin global (ex: 3 véhicules, essais de freinage et thermique, sur 2 semaines, Alice et Bob)")
+prompt_global = st.sidebar.text_area("Décris ton besoin global")
 
 def generer_planning_depuis_prompt(prompt):
     if not prompt.strip():
         return []
-
     nb_vehicules = 4 if "3" in prompt else 2
     interlocuteurs = [n for n in ["Alice", "Bob"] if n in prompt]
     if not interlocuteurs:
         interlocuteurs = ["Alice", "Bob"]
-
     types_essais = [t for t in ["Freinage", "Thermique"] if t.lower() in prompt.lower()]
     if not types_essais:
         types_essais = ["Freinage", "Thermique"]
-
     durees = [2, 3, 4]
     start_date = datetime.today().date() + timedelta(days=1)
-
     vehicules = []
     for i in range(nb_vehicules):
         essais = []
@@ -61,36 +57,18 @@ def generer_planning_depuis_prompt(prompt):
                 "date_fin": str(date_fin)
             })
             current_date = date_fin + timedelta(days=1)
-
         vehicules.append({
             "id": f"V{i+1:03}",
             "sopm": str(start_date),
             "lrm": str(start_date + timedelta(days=14)),
             "essais": essais
         })
-
     return vehicules
 
-# 📂 Chargement des projets
-projets_existants = [f.replace(".json", "") for f in os.listdir(DOSSIER_PROJETS) if f.endswith(".json")]
-dernier_projet = charger_dernier_projet()
-projet_selectionne = st.sidebar.selectbox("📂 Charger un projet existant", [""] + projets_existants, index=([ "" ] + projets_existants).index(dernier_projet) if dernier_projet in projets_existants else 0)
-nom_projet = st.sidebar.text_input("📝 Nom du projet", value=projet_selectionne if projet_selectionne else "Projet_Test")
+vehicules = generer_planning_depuis_prompt(prompt_global) if prompt_global else []
 
-vehicules = []
-if projet_selectionne:
-    with open(os.path.join(DOSSIER_PROJETS, f"{projet_selectionne}.json"), "r") as f:
-        data = json.load(f)
-        vehicules = copy.deepcopy(data["vehicules"])
-
-if prompt_global:
-    vehicules = generer_planning_depuis_prompt(prompt_global)
-    st.sidebar.success(f"✅ {len(vehicules)} véhicules générés avec GenAI")
-
-# 📅 Bouton de génération du planning
 if st.sidebar.button("📅 Générer le planning"):
     planning = []
-    today = datetime.today().date()
     for veh in vehicules:
         for test in veh["essais"]:
             if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
@@ -110,7 +88,6 @@ if st.sidebar.button("📅 Générer le planning"):
                     "Date SOPM": sopm,
                     "Date LRM": lrm
                 })
-
     if planning:
         df = pd.DataFrame(planning)
         st.subheader("📋 Tableau du planning")
@@ -129,5 +106,6 @@ if st.sidebar.button("📅 Générer le planning"):
             return output.getvalue()
 
         excel_data = convert_df_to_excel(df)
-        st.download_button("📥 Télécharger le planning Excel", data=excel_data, file_name=f"{nom_projet}_planning.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("📥 Télécharger le planning Excel", data=excel_data, file_name="planning_genai.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     else:
+        st.warning("⚠️ Aucun essai valide pour générer le planning.")
