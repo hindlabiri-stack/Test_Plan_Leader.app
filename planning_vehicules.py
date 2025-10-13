@@ -5,7 +5,6 @@ from datetime import datetime
 from io import BytesIO
 import os
 import re
-import json
 
 st.set_page_config(page_title="TestDrive Planner App", layout="wide")
 st.title("🧠🚗 TestDrive Planner App avec GenAI")
@@ -14,14 +13,17 @@ DOSSIER_PROJETS = "projets_vehicules"
 os.makedirs(DOSSIER_PROJETS, exist_ok=True)
 
 st.sidebar.subheader("🧠 Générer un planning avec GenAI")
-nom_projet = st.sidebar.text_input("🗂️ Nom du projet", value="mon_projet")
 prompt_global = st.sidebar.text_area("Décris ton besoin global")
 
 # Fonction pour parser un prompt structuré
 def parser_prompt_vehicules(prompt):
     vehicules = []
+
+    # Détection du nombre de véhicules
     nb_vehicules_match = re.search(r"je veux (\d+) véhicules", prompt, re.IGNORECASE)
     nb_vehicules = int(nb_vehicules_match.group(1)) if nb_vehicules_match else 0
+
+    # Séparation par véhicule
     vehicule_blocks = re.split(r"le \w+ véhicule concerne", prompt, flags=re.IGNORECASE)[1:]
     interlocuteurs = re.findall(r"le \w+ véhicule concerne ([A-Za-z]+)", prompt, re.IGNORECASE)
 
@@ -44,39 +46,27 @@ def parser_prompt_vehicules(prompt):
             })
         vehicules.append({
             "id": f"V{i+1:03}",
-            "interlocuteur": interlocuteurs[i] if i < len(interlocuteurs) else "",
             "sopm": essais[0]["date_debut"] if essais else "",
             "lrm": essais[-1]["date_fin"] if essais else "",
             "essais": essais
         })
+
     return vehicules
 
-# Chargement d'un projet existant
-liste_projets = [f[:-5] for f in os.listdir(DOSSIER_PROJETS) if f.endswith(".json")]
-projet_selectionne = st.sidebar.selectbox("📂 Charger un projet existant", options=[""] + liste_projets)
+# Génération des véhicules à partir du prompt
+vehicules = parser_prompt_vehicules(prompt_global) if prompt_global else []
 
-if projet_selectionne:
-    with open(os.path.join(DOSSIER_PROJETS, f"{projet_selectionne}.json"), "r", encoding="utf-8") as f:
-        vehicules = json.load(f)
-    st.success(f"📂 Projet '{projet_selectionne}' chargé.")
-elif prompt_global:
-    vehicules = parser_prompt_vehicules(prompt_global)
-else:
-    vehicules = []
-
-# Génération du planning
+# Bouton pour générer le planning
 if st.sidebar.button("📅 Générer le planning"):
     planning = []
     for veh in vehicules:
-        if "essais" not in veh:
-            continue
         for test in veh["essais"]:
-            if test.get("nom") and test.get("interlocuteur") and test.get("date_debut") and int(test.get("duree", 0)) > 0:
+            if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
                 date_debut = pd.to_datetime(test["date_debut"]).date()
                 date_fin = pd.to_datetime(test["date_fin"]).date()
                 semaine = date_debut.isocalendar()[1]
-                sopm = pd.to_datetime(veh["sopm"]).date() if veh.get("sopm") else date_debut
-                lrm = pd.to_datetime(veh["lrm"]).date() if veh.get("lrm") else date_fin
+                sopm = pd.to_datetime(veh["sopm"]).date()
+                lrm = pd.to_datetime(veh["lrm"]).date()
                 planning.append({
                     "ID Véhicule": veh["id"],
                     "Nom du Test": test["nom"],
@@ -111,11 +101,5 @@ if st.sidebar.button("📅 Générer le planning"):
         st.download_button("📥 Télécharger le planning Excel", data=excel_data,
                            file_name="planning_genai.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-        # Sauvegarde du projet
-        if st.sidebar.button("💾 Sauvegarder le projet"):
-            with open(os.path.join(DOSSIER_PROJETS, f"{nom_projet}.json"), "w", encoding="utf-8") as f:
-                json.dump(vehicules, f, ensure_ascii=False, indent=2)
-            st.success(f"✅ Projet '{nom_projet}' sauvegardé avec succès.")
     else:
         st.warning("⚠️ Aucun essai valide pour générer le planning.")
