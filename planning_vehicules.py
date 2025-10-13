@@ -12,18 +12,7 @@ st.set_page_config(page_title="TestDrive Planner App", layout="wide")
 st.title("🧠🚗 TestDrive Planner App avec GenAI")
 
 DOSSIER_PROJETS = "projets_vehicules"
-FICHIER_DERNIER_PROJET = "dernier_projet.json"
 os.makedirs(DOSSIER_PROJETS, exist_ok=True)
-
-def sauvegarder_dernier_projet(nom):
-    with open(FICHIER_DERNIER_PROJET, "w") as f:
-        json.dump({"nom": nom}, f)
-
-def charger_dernier_projet():
-    if os.path.exists(FICHIER_DERNIER_PROJET):
-        with open(FICHIER_DERNIER_PROJET, "r") as f:
-            return json.load(f).get("nom", "")
-    return ""
 
 st.sidebar.subheader("🧠 Générer un planning avec GenAI")
 prompt_global = st.sidebar.text_area("Décris ton besoin global")
@@ -73,7 +62,7 @@ if st.sidebar.button("📅 Générer le planning"):
         for test in veh["essais"]:
             if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
                 date_debut = pd.to_datetime(test["date_debut"]).date()
-                date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
+                date_fin = pd.to_datetime(test["date_fin"]).date()
                 semaine = date_debut.isocalendar()[1]
                 sopm = pd.to_datetime(veh["sopm"]).date()
                 lrm = pd.to_datetime(veh["lrm"]).date()
