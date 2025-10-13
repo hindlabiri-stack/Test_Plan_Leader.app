@@ -19,5 +19,4 @@ def extraire_dates(prompt):
                         "octobre": 10, "novembre": 11, "décembre": 12
                     }[mois]
                     dates.append(datetime(datetime.today().year, mois_num, jour).date())
-            except:
-                continue
+          
