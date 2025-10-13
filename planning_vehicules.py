@@ -13,7 +13,6 @@ st.title("🧠🚗 TestDrive Planner App avec GenAI")
 DOSSIER_PROJETS = "projets_vehicules"
 os.makedirs(DOSSIER_PROJETS, exist_ok=True)
 
-# Sidebar : nom du projet et prompt
 st.sidebar.subheader("🧠 Générer un planning avec GenAI")
 nom_projet = st.sidebar.text_input("🗂️ Nom du projet", value="mon_projet")
 prompt_global = st.sidebar.text_area("Décris ton besoin global")
@@ -69,13 +68,15 @@ else:
 if st.sidebar.button("📅 Générer le planning"):
     planning = []
     for veh in vehicules:
+        if "essais" not in veh:
+            continue
         for test in veh["essais"]:
-            if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
+            if test.get("nom") and test.get("interlocuteur") and test.get("date_debut") and int(test.get("duree", 0)) > 0:
                 date_debut = pd.to_datetime(test["date_debut"]).date()
                 date_fin = pd.to_datetime(test["date_fin"]).date()
                 semaine = date_debut.isocalendar()[1]
-                sopm = pd.to_datetime(veh["sopm"]).date()
-                lrm = pd.to_datetime(veh["lrm"]).date()
+                sopm = pd.to_datetime(veh["sopm"]).date() if veh.get("sopm") else date_debut
+                lrm = pd.to_datetime(veh["lrm"]).date() if veh.get("lrm") else date_fin
                 planning.append({
                     "ID Véhicule": veh["id"],
                     "Nom du Test": test["nom"],
