@@ -45,7 +45,7 @@ def generer_planning_depuis_prompt(prompt):
     if not prompt.strip():
         return []
 
-    nb_vehicules = 4 if "3" in prompt else 2
+    nb_vehicules = 3 if "3" in prompt else 2
 
     interlocuteurs = extraire_interlocuteurs(prompt)
     if not interlocuteurs:
