@@ -28,19 +28,35 @@ def charger_dernier_projet():
 st.sidebar.subheader("🧠 Générer un planning avec GenAI")
 prompt_global = st.sidebar.text_area("Décris ton besoin global")
 
+import re
+from datetime import datetime, timedelta
+
+def extraire_interlocuteurs(prompt):
+    # Recherche tous les mots commençant par une majuscule (supposés être des noms)
+    return list(set(re.findall(r'\b[A-Z][a-z]+\b', prompt)))
+
+def extraire_types_essais(prompt):
+    # Recherche tous les mots après "essai" ou "test"
+    essais = re.findall(r'essai\s+(\w+)', prompt, re.IGNORECASE)
+    essais += re.findall(r'test\s+(\w+)', prompt, re.IGNORECASE)
+    return list(set(essais)) if essais else ["Freinage", "Thermique"]
+
 def generer_planning_depuis_prompt(prompt):
     if not prompt.strip():
         return []
+
     nb_vehicules = 4 if "3" in prompt else 2
-    interlocuteurs = [n for n in ["Alice", "Bob", "Hind"] if n in prompt]
+
+    interlocuteurs = extraire_interlocuteurs(prompt)
     if not interlocuteurs:
         interlocuteurs = ["Alice", "Bob", "Hind"]
-    types_essais = [t for t in ["Freinage", "Thermique"] if t.lower() in prompt.lower()]
-    if not types_essais:
-        types_essais = ["Freinage", "Thermique"]
+
+    types_essais = extraire_types_essais(prompt)
     durees = [2, 3, 4]
+
     start_date = datetime.today().date() + timedelta(days=1)
     vehicules = []
+
     for i in range(nb_vehicules):
         essais = []
         current_date = start_date
@@ -63,7 +79,9 @@ def generer_planning_depuis_prompt(prompt):
             "lrm": str(start_date + timedelta(days=14)),
             "essais": essais
         })
+
     return vehicules
+
 
 vehicules = generer_planning_depuis_prompt(prompt_global) if prompt_global else []
 
