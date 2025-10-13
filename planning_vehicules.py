@@ -1,27 +1,41 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
 from io import BytesIO
-import re
+import json
+import os
+import copy
 
-st.set_page_config(page_title="TestDrive Planner GenAI Libre", layout="wide")
-st.title("🧠📅 TestDrive Planner avec saisie libre des essais par véhicule")
+st.set_page_config(page_title="TestDrive Planner App", layout="wide")
+st.title("🧠🚗 TestDrive Planner App avec GenAI")
 
-st.sidebar.subheader("🧠 Saisie libre du planning")
-prompt = st.sidebar.text_area("Décris chaque véhicule avec SOPM, LRM et ses essais (exemple ci-dessous)", height=200, value="""
-V001: SOPM=2025-10-15, LRM=2025-11-10 | freinage (Alice) du 2025-10-20 au 2025-10-22, thermique (Bob) du 2025-10-24 au 2025-10-26
-V002: SOPM=2025-10-18, LRM=2025-11-12 | acoustique (Fatima) du 2025-10-21 au 2025-10-23
-V003: SOPM=2025-10-20, LRM=2025-11-15 | endurance (Bob) du 2025-10-25 au 2025-10-28, thermique (Alice) du 2025-10-29 au 2025-10-31, freinage (Bob) du 2025-11-01 au 2025-11-03
-""")
+DOSSIER_PROJETS = "projets_vehicules"
+FICHIER_DERNIER_PROJET = "dernier_projet.json"
+os.makedirs(DOSSIER_PROJETS, exist_ok=True)
 
-vehicules = []
-if prompt:
+def sauvegarder_dernier_projet(nom):
+    with open(FICHIER_DERNIER_PROJET, "w") as f:
+        json.dump({"nom": nom}, f)
+
+def charger_dernier_projet():
+    if os.path.exists(FICHIER_DERNIER_PROJET):
+        with open(FICHIER_DERNIER_PROJET, "r") as f:
+            return json.load(f).get("nom", "")
+    return ""
+
+st.sidebar.subheader("🧠 Générer un planning avec GenAI")
+prompt_global = st.sidebar.text_area("Décris ton besoin global")
+
+def generer_planning_depuis_prompt(prompt):
+    vehicules = []
     for ligne in prompt.strip().split("\n"):
         if not ligne.strip():
             continue
         match = re.match(r"(V\\d+):\\s*SOPM=(\\d{4}-\\d{2}-\\d{2}),\\s*LRM=(\\d{4}-\\d{2}-\\d{2})\\s*\\|(.*)", ligne)
         if not match:
+            st.warning(f"❌ Ligne ignorée (format incorrect) : {ligne}")
             continue
         veh_id = match.group(1).strip()
         sopm = match.group(2).strip()
@@ -44,35 +58,46 @@ if prompt:
                     "date_fin": str(date_fin),
                     "duree": duree
                 })
+            else:
+                st.warning(f"❌ Essai ignoré (format incorrect) : {essai}")
         vehicules.append({
             "id": veh_id,
             "sopm": sopm,
             "lrm": lrm,
             "essais": essais
         })
+    return vehicules
+
+vehicules = generer_planning_depuis_prompt(prompt_global) if prompt_global else []
 
 if st.sidebar.button("📅 Générer le planning"):
     planning = []
     for veh in vehicules:
         for test in veh["essais"]:
-            planning.append({
-                "ID Véhicule": veh["id"],
-                "Nom du Test": test["nom"],
-                "Interlocuteur": test["interlocuteur"],
-                "Date Début": test["date_debut"],
-                "Date Fin": test["date_fin"],
-                "Durée (jours)": test["duree"],
-                "Date SOPM": veh["sopm"],
-                "Date LRM": veh["lrm"]
-            })
-
+            if test["nom"] and test["interlocuteur"] and test["date_debut"] and int(test["duree"]) > 0:
+                date_debut = pd.to_datetime(test["date_debut"]).date()
+                date_fin = date_debut + timedelta(days=int(test["duree"]) - 1)
+                semaine = date_debut.isocalendar()[1]
+                sopm = pd.to_datetime(veh["sopm"]).date()
+                lrm = pd.to_datetime(veh["lrm"]).date()
+                planning.append({
+                    "ID Véhicule": veh["id"],
+                    "Nom du Test": test["nom"],
+                    "Interlocuteur": test["interlocuteur"],
+                    "Date Début": date_debut,
+                    "Date Fin": date_fin,
+                    "Durée (jours)": test["duree"],
+                    "Semaine": semaine,
+                    "Date SOPM": sopm,
+                    "Date LRM": lrm
+                })
     if planning:
         df = pd.DataFrame(planning)
         st.subheader("📋 Tableau du planning")
         st.dataframe(df)
 
         st.subheader("📊 Diagramme de Gantt")
-        fig = px.timeline(df, x_start="Date Début", x_end="Date Fin", y="ID Véhicule", color="Nom du Test", hover_data=["Interlocuteur", "Durée (jours)"])
+        fig = px.timeline(df, x_start="Date Début", x_end="Date Fin", y="ID Véhicule", color="Nom du Test", hover_data=["Interlocuteur", "Durée (jours)", "Semaine"])
         fig.update_yaxes(autorange="reversed")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -84,6 +109,6 @@ if st.sidebar.button("📅 Générer le planning"):
             return output.getvalue()
 
         excel_data = convert_df_to_excel(df)
-        st.download_button("📥 Télécharger le planning Excel", data=excel_data, file_name="planning_genai_libre.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("📥 Télécharger le planning Excel", data=excel_data, file_name="planning_genai.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     else:
-        st.warning("⚠️ Aucun essai valide détecté.")
+        st.warning("⚠️ Aucun essai valide pour générer le planning.")
