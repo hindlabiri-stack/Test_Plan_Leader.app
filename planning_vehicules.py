@@ -1,17 +1,11 @@
-import streamlit as st
-import random
-from datetime import datetime, timedelta
-
 # 🧠 Génération automatique d'un planning à partir d'un prompt global
 st.sidebar.subheader("🧠 Générer un planning complet avec GenAI")
 prompt_global = st.sidebar.text_area("Décris ton besoin global (ex: 3 véhicules, essais de freinage et thermique, sur 2 semaines, Alice et Bob)")
 
-# Fonction simulée de génération de planning
 def generer_planning_depuis_prompt(prompt):
     if not prompt.strip():
         return []
 
-    # Simulation : extraire nombre de véhicules et interlocuteurs
     nb_vehicules = 4 if "3" in prompt else 2
     interlocuteurs = []
     if "Alice" in prompt:
@@ -37,8 +31,8 @@ def generer_planning_depuis_prompt(prompt):
         essais = []
         current_date = start_date
         for essai_type in types_essais:
-            interlocuteur = random.choice(interlocuteurs)
-            duree = random.choice(durees)
+            interlocuteur = interlocuteurs[i % len(interlocuteurs)]
+            duree = durees[(i + len(essais)) % len(durees)]
             date_debut = current_date
             date_fin = current_date + timedelta(days=duree)
             essais.append({
@@ -54,19 +48,13 @@ def generer_planning_depuis_prompt(prompt):
             "id": f"V{i+1:03}",
             "sopm": str(start_date),
             "lrm": str(start_date + timedelta(days=14)),
-            "nombre_vehicules": nb_vehicules,
             "essais": essais
         })
 
     return vehicules
-
-# Affichage du planning généré
+    # 🚀 Nombre de véhicules
+    # 📦 Génération automatique via GenAI
 if prompt_global:
     vehicules_genai = generer_planning_depuis_prompt(prompt_global)
     st.sidebar.success(f"✅ {len(vehicules_genai)} véhicules générés avec essais répartis !")
-    for veh in vehicules_genai:
-        st.sidebar.markdown(f"### 🚗 {veh['id']}")
-        st.sidebar.write(f"- SOPM : {veh['sopm']}")
-        st.sidebar.write(f"- LRM : {veh['lrm']}")
-        for essai in veh["essais"]:
-            st.sidebar.write(f"  • {essai['nom']} ({essai['interlocuteur']}) du {essai['date_debut']} au {essai['date_fin']} ({essai['duree']} jours)")
+    vehicules = vehicules_genai
