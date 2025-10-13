@@ -32,9 +32,9 @@ def generer_planning_depuis_prompt(prompt):
     if not prompt.strip():
         return []
     nb_vehicules = 4 if "3" in prompt else 2
-    interlocuteurs = [n for n in ["Alice", "Bob"] if n in prompt]
+    interlocuteurs = [n for n in ["Alice", "Bob", "Hind"] if n in prompt]
     if not interlocuteurs:
-        interlocuteurs = ["Alice", "Bob"]
+        interlocuteurs = ["Alice", "Bob", "Hind"]
     types_essais = [t for t in ["Freinage", "Thermique"] if t.lower() in prompt.lower()]
     if not types_essais:
         types_essais = ["Freinage", "Thermique"]
