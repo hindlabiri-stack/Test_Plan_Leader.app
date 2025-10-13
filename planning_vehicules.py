@@ -12,7 +12,7 @@ def generer_planning_depuis_prompt(prompt):
         return []
 
     # Simulation : extraire nombre de véhicules et interlocuteurs
-    nb_vehicules = 3 if "3" in prompt else 2
+    nb_vehicules = 4 if "3" in prompt else 2
     interlocuteurs = []
     if "Alice" in prompt:
         interlocuteurs.append("Alice")
