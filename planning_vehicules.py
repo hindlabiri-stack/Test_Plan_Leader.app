@@ -1,36 +1,66 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
-# ⚙️ Configuration de la page
-st.set_page_config(page_title="TestDrive Planner avec GenAI", layout="wide")
-st.title("🚗🧠 TestDrive Planner avec GenAI pour la planification intelligente des essais")
+# 🧠 Génération automatique d'un planning à partir d'un prompt global
+st.sidebar.subheader("🧠 Générer un planning complet avec GenAI")
+prompt_global = st.sidebar.text_area("Décris ton besoin global (ex: 3 véhicules, essais de freinage et thermique, sur 2 semaines, Alice et Bob)")
 
-# 🧠 Zone GenAI : Suggestions intelligentes
-st.sidebar.subheader("🧠 Suggestion automatique par GenAI")
-prompt = st.sidebar.text_area("Décris le type d'essai ou le besoin (ex: test de freinage sur route humide)")
-
-# Fonction simulée de génération GenAI
-# Dans un vrai environnement, on utiliserait un modèle comme GPT ou Claude
-def generer_suggestions(prompt):
+# Fonction simulée de génération de planning
+def generer_planning_depuis_prompt(prompt):
     if not prompt.strip():
-        return "", "", 2, str(datetime.today().date())
+        return []
 
-    nom_test = f"Essai: {prompt[:30]}..."
-    interlocuteur = random.choice(["Alice", "Bob", "Claire", "David"])
-    duree = random.choice([1, 2, 3, 5])
-    date_debut = str(datetime.today().date() + timedelta(days=random.randint(1, 10)))
-    return nom_test, interlocuteur, duree, date_debut
+    # Simulation : extraire nombre de véhicules et interlocuteurs
+    nb_vehicules = 3 if "3" in prompt else 2
+    interlocuteurs = []
+    if "Alice" in prompt:
+        interlocuteurs.append("Alice")
+    if "Bob" in prompt:
+        interlocuteurs.append("Bob")
+    if not interlocuteurs:
+        interlocuteurs = ["Alice", "Bob"]
 
-# Affichage des suggestions
-if prompt:
-    nom_test, interlocuteur, duree, date_debut = generer_suggestions(prompt)
-    st.sidebar.markdown("### 💡 Suggestions GenAI")
-    st.sidebar.write(f"**Nom du test suggéré :** {nom_test}")
-    st.sidebar.write(f"**Interlocuteur suggéré :** {interlocuteur}")
-    st.sidebar.write(f"**Durée suggérée :** {duree} jours")
-    st.sidebar.write(f"**Date de début suggérée :** {date_debut}")
-else:
-    st.sidebar.info("Saisis une description pour obtenir des suggestions intelligentes.")
+    types_essais = []
+    if "freinage" in prompt:
+        types_essais.append("Freinage")
+    if "thermique" in prompt:
+        types_essais.append("Thermique")
+    if not types_essais:
+        types_essais = ["Freinage", "Thermique"]
+
+    durees = [2, 3, 4]
+    start_date = datetime.today().date() + timedelta(days=1)
+
+    vehicules = []
+    for i in range(nb_vehicules):
+        essais = []
+        current_date = start_date
+        for essai_type in types_essais:
+            interlocuteur = random.choice(interlocuteurs)
+            duree = random.choice(durees)
+            essais.append({
+                "nom": f"Essai {essai_type}",
+                "interlocuteur": interlocuteur,
+                "duree": duree,
+                "date_debut": str(current_date)
+            })
+            current_date += timedelta(days=duree + 1)
+
+        vehicules.append({
+            "id": f"V{i+1:03}",
+            "sopm": str(start_date),
+            "lrm": str(start_date + timedelta(days=14)),
+            "essais": essais
+        })
+
+    return vehicules
+
+# Affichage du planning généré
+if prompt_global:
+    vehicules_genai = generer_planning_depuis_prompt(prompt_global)
+    st.sidebar.success(f"✅ {len(vehicules_genai)} véhicules générés avec essais répartis !")
+    for veh in vehicules_genai:
+        st.sidebar.markdown(f"### 🚗 {veh['id']}")
+        for essai in veh["essais"]:
+            st.sidebar.write(f"- {essai['nom']} ({essai['interlocuteur']}) du {essai['date_debut']} pendant {essai['duree']} jours")
