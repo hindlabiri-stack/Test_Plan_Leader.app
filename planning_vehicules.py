@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -13,7 +14,6 @@ st.title("🧠🚗 TestDrive Planner App avec GenAI")
 DOSSIER_PROJETS = "projets_vehicules"
 os.makedirs(DOSSIER_PROJETS, exist_ok=True)
 
-# Authentification simple
 utilisateur = st.sidebar.text_input("👤 Entrez votre nom d'utilisateur")
 if utilisateur:
     dossier_utilisateur = os.path.join(DOSSIER_PROJETS, utilisateur)
@@ -128,3 +128,5 @@ if utilisateur:
                 for a in alertes:
                     st.warning(a)
         else:
+            st.warning("⚠️ Aucun essai valide pour générer le planning.")
+
